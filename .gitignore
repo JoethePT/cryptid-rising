@@ -1,0 +1,6 @@
+node_modules
+dist
+.DS_Store
+# raw Canva exports (large) and their expiring signed download links
+art-src/*.png
+art-src/urls*.txt
