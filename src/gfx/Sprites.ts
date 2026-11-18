@@ -28,17 +28,25 @@ export const SPRITES: Record<string, SpriteDef> = {
   'golem-walk': { h: 320, ax: 0.5 }, 'golem-roar': { h: 360, ax: 0.5, fallback: 'golem-walk' }, 'golem-lunge': { h: 270, ax: 0.5, fallback: 'golem-walk' },
 };
 
+/** Bump the folder name (and art-src/process.py OUT_DIR) whenever sprites change, so browsers never reuse stale images. */
+export const SPRITE_DIR = 'sprites/a2';
+
 type Manifest = Record<string, { w: number; h: number; ax: number }>;
 const MAN = manifest as Manifest;
 
 export function hasSprite(scene: Phaser.Scene, key: string) {
-  return scene.textures.exists(key) && key in MAN;
+  return key in MAN && scene.textures.exists(key) && scene.textures.get(key).key !== '__MISSING';
 }
 
 export function preloadSprites(scene: Phaser.Scene) {
   for (const key of Object.keys(SPRITES)) {
-    if (key in MAN) scene.load.image(key, `sprites/${key}.png`);
+    if (key in MAN) scene.load.image(key, `${SPRITE_DIR}/${key}.png`);
   }
+  // a failed image is simply left out; entities then fall back to a related pose or the drawn puppet
+  scene.load.on('loaderror', (file: Phaser.Loader.File) => {
+    console.warn('[sprites] failed to load', file.key, file.url);
+    if (scene.textures.exists(file.key)) scene.textures.remove(file.key);
+  });
 }
 
 /**
@@ -49,6 +57,8 @@ export function applySprite(img: Phaser.GameObjects.Image, key: string, facing: 
   let def = SPRITES[key];
   // optional poses fall back to a related one (keeping the requested on-screen height)
   if (!hasSprite(img.scene, key) && def?.fallback) { key = def.fallback; def = { ...SPRITES[key], h: SPRITES[key].h }; }
+  // never switch to a texture that isn't loaded (that would draw Phaser's 'missing' square)
+  if (!hasSprite(img.scene, key)) return;
   if (img.texture.key !== key) img.setTexture(key);
   const m = MAN[key];
   const s = (def.h * scale) / m.h;

@@ -14,6 +14,7 @@ from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '..', 'public', 'sprites')
+OUT_DIR = 'a2'  # keep in sync with SPRITE_DIR in src/gfx/Sprites.ts
 SPRITE_H = 440  # max output height in px (game draws them smaller; keeps detail on big screens)
 
 
@@ -94,7 +95,8 @@ def main(names):
         src_h = img.height
         s = min(1.0, SPRITE_H / img.height)
         img = img.resize((max(1, round(img.width * s)), max(1, round(img.height * s))), Image.LANCZOS)
-        img.save(os.path.join(OUT, name + '.png'), optimize=True)
+        os.makedirs(os.path.join(OUT, OUT_DIR), exist_ok=True)
+        img.save(os.path.join(OUT, OUT_DIR, name + '.png'), optimize=True)
         prev = manifest.get(name, {})
         manifest[name] = {
             'w': img.width, 'h': img.height, 'srcH': src_h,
