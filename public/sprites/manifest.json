@@ -1,4 +1,10 @@
 {
+ "behemoth-walk": {
+  "ax": 0.495,
+  "h": 440,
+  "srcH": 755,
+  "w": 494
+ },
  "bigfoot-charge": {
   "ax": 0.562,
   "h": 440,
