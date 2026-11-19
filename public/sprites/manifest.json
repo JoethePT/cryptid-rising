@@ -1,4 +1,10 @@
 {
+ "behemoth-swing": {
+  "ax": 0.556,
+  "h": 440,
+  "srcH": 767,
+  "w": 312
+ },
  "behemoth-walk": {
   "ax": 0.495,
   "h": 440,
