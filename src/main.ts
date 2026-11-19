@@ -56,6 +56,20 @@ if (isTouchDevice()) {
   rotate.id = 'rotate';
   rotate.innerHTML = '<div><div style="font-size:56px">⟳</div>Turn your phone sideways to play</div>';
   document.body.appendChild(rotate);
+
+  // On the first tap, go fullscreen (hides the address bar on Android; iPhones ignore this),
+  // and refit the game whenever the visible area changes.
+  const goFull = () => {
+    const el = document.documentElement as HTMLElement & { webkitRequestFullscreen?: () => void };
+    try {
+      if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {});
+      else el.webkitRequestFullscreen?.();
+    } catch { /* not allowed here */ }
+  };
+  window.addEventListener('touchend', goFull, { once: true });
+  const refit = () => (window as unknown as { game?: Phaser.Game }).game?.scale.refresh();
+  window.addEventListener('orientationchange', () => setTimeout(refit, 300));
+  window.visualViewport?.addEventListener('resize', refit);
 }
 
 boot();
