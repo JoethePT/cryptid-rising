@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, STAGES, DIFFICULTY, Difficulty, FONT_TITLE, FONT_UI, GAME_W, HEROES, HeroId } from '../config';
-import { Controls } from '../systems/Controls';
+import { Controls, isTouchDevice } from '../systems/Controls';
 import { audio } from '../systems/Audio';
 import { Parallax } from '../gfx/Parallax';
 import { bigfootLook, drawHumanoid, heroLook } from '../gfx/Puppet';
@@ -102,7 +102,7 @@ export class MenuScene extends Phaser.Scene {
     startBtn.on('pointerdown', () => this.start());
     this.tweens.add({ targets: startBtn, alpha: 0.45, yoyo: true, repeat: -1, duration: 700 });
 
-    this.add.text(GAME_W / 2, 690, '←/→ choose   ↑/↓ select row   Enter start   ·   M mute   ·   Gamepad supported', {
+    this.add.text(GAME_W / 2, 690, isTouchDevice() ? 'Tap a hero to pick, tap again to start   ·   tap difficulty / stage to change them' : '←/→ choose   ↑/↓ select row   Enter start   ·   M mute   ·   Gamepad supported', {
       fontFamily: FONT_UI, fontSize: '15px', color: '#8fb0b5', fontStyle: '800',
     }).setOrigin(0.5);
     this.padText = this.add.text(GAME_W - 16, 16, '', { fontFamily: FONT_UI, fontSize: '14px', color: '#7ff6ff', fontStyle: '800' }).setOrigin(1, 0);

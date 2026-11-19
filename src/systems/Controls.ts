@@ -31,6 +31,14 @@ const PADMAP: Partial<Record<Action, number[]>> = {
 
 const ACTIONS = Object.keys(KEYMAP) as Action[];
 
+/** Written every frame by the on-screen touch controls (TouchScene); read by every Controls instance. */
+export const touchInput: Partial<Record<Action, boolean>> = {};
+
+/** True on phones/tablets, or anywhere with ?touch in the URL (for testing). */
+export function isTouchDevice() {
+  return new URLSearchParams(location.search).has('touch') || 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
 /** Unified keyboard + gamepad input with per-frame "pressed" edges. Call update() once per frame. */
 export class Controls {
   private keys = new Map<Action, Phaser.Input.Keyboard.Key[]>();
@@ -78,7 +86,7 @@ export class Controls {
     for (const a of ACTIONS) {
       this.prev.set(a, this.now.get(a) ?? false);
       const kb = this.keys.get(a)!.some((k) => k.isDown);
-      this.now.set(a, kb || this.padDown(a));
+      this.now.set(a, kb || this.padDown(a) || !!touchInput[a]);
     }
   }
 

@@ -4,6 +4,8 @@ import { BootScene, PauseScene, ResultScene } from './scenes/MiscScenes';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
+import { TouchScene } from './scenes/TouchScene';
+import { isTouchDevice } from './systems/Controls';
 import { audio } from './systems/Audio';
 
 const debug = new URLSearchParams(location.search).has('debug');
@@ -17,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   physics: { default: 'arcade', arcade: { gravity: { x: 0, y: GRAVITY }, debug } },
   input: { gamepad: true },
-  scene: [BootScene, MenuScene, GameScene, HudScene, PauseScene, ResultScene],
+  scene: [BootScene, MenuScene, GameScene, HudScene, PauseScene, ResultScene, TouchScene],
 };
 
 async function boot() {
@@ -40,5 +42,20 @@ window.addEventListener('pointerdown', unlock);
 window.addEventListener('touchstart', unlock);
 // M toggles all sound
 window.addEventListener('keydown', (e) => { if (e.code === 'KeyM' && !e.repeat) audio.toggleMute(); });
+
+// Phones: block browser gestures over the game, and ask for landscape when held upright.
+if (isTouchDevice()) {
+  const style = document.createElement('style');
+  style.textContent = `
+    html, body, #game { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; overscroll-behavior: none; }
+    #rotate { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; text-align: center;
+      background: #070b10; color: #d8e6e8; font: 800 20px Nunito, Arial, sans-serif; z-index: 10; padding: 24px; }
+    @media (orientation: portrait) { #rotate { display: flex; } }`;
+  document.head.appendChild(style);
+  const rotate = document.createElement('div');
+  rotate.id = 'rotate';
+  rotate.innerHTML = '<div><div style="font-size:56px">⟳</div>Turn your phone sideways to play</div>';
+  document.body.appendChild(rotate);
+}
 
 boot();

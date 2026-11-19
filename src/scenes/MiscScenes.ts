@@ -65,7 +65,7 @@ export class PauseScene extends Phaser.Scene {
     this.list = menuList(this, ['RESUME', 'RESTART STAGE', 'QUIT TO TITLE'], 340, (i) => {
       if (i === 0) this.resume();
       else if (i === 1) { this.scene.stop(); game.scene.restart(); }
-      else { this.scene.stop(); this.scene.stop('Hud'); this.scene.stop('Game'); this.scene.start('Menu'); }
+      else { this.scene.stop(); this.scene.stop('Hud'); this.scene.stop('Touch'); this.scene.stop('Game'); this.scene.start('Menu'); }
     });
     this.add.text(GAME_W / 2, 600, 'Esc / Start to resume   ·   M to mute sound', { fontFamily: FONT_UI, fontSize: '16px', color: '#9fc6c9', fontStyle: '800' }).setOrigin(0.5);
   }

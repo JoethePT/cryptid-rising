@@ -1,7 +1,7 @@
 # Cryptid Rising — project guide
 
 An original 2D side-scrolling beat-'em-up. Collect spirit orbs to power up twice, then transform into a beast.
-Built with **Phaser 3 + TypeScript + Vite**, running in any desktop browser. The game is solo, controlled by keyboard with optional gamepad.
+Built with **Phaser 3 + TypeScript + Vite**, running in any desktop browser and on phones/tablets (landscape). The game is solo, controlled by keyboard, gamepad or on-screen touch controls.
 
 > Original IP: inspired by the *genre* (orb-powered transformation brawlers). Don't copy names, art, music,
 > levels or characters from any existing game.
@@ -58,6 +58,8 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 | Dash | L / Shift / C | B / RB |
 | Pause | Esc / P | Start |
 
+**Touch (phones/tablets):** `scenes/TouchScene.ts` draws a joystick (left) and JUMP / PUNCH / KICK / DASH buttons (right) plus a pause button (top). It shows only on touch devices, or with `?touch` in the URL. It writes into `touchInput` in `systems/Controls.ts`, so every Controls instance sees it like a key press. Portrait shows a "turn your phone sideways" prompt.
+
 Human moves: punch, kick, crouch punch, sweep kick (crouch + kick), one air kick per jump, and dash (with i-frames).
 Crouching ducks under Husk swipes.
 Velociraptor moves: **Claw Slash** (J), fast and chainable. **Pounce** (K), a leaping strike that also hits in the air. **Sprint** (dash), very fast and damaging. Fossil Golem: lunge bite, bone spikes from the ground (glow first), shard rain (watch the shadows), summons at 55% and 25% HP.
@@ -67,7 +69,9 @@ Bigfoot moves: **Ground Pound** (J), which hits up close and sends shockwaves bo
 ## Audio
 `src/systems/Audio.ts` synthesizes everything, so the game has no audio files:
 - **Music:** original 16-bit console-style songs with 2-operator FM bass and lead, square arpeggios and synth drums. Each song is a chord chart plus a hand-written lead line (16th-note tokens). Tracks: `title`, `forest`, `canyon`, `boss`, `clear`, `gameover`.
-- **SFX:** `audio.sfx(name)` covers swing, hit, heavy, hurt, jump, orb, powerup, transform, slam, throw, poof, caw, roar, boom, crack, pounce, and the menu move/select/pause sounds.
+- **SFX:** `audio.sfx(name)` covers swing, hit, heavy, hurt, jump, orb, powerup, transform, slam, throw, poof, caw, roar, boom, crack, pounce, zap, thunder, and the menu move/select/pause sounds.
+- **Creature voices** (formant-filtered growl synth): `bigfoot`, `raptor`, `dragon` (transformations), `moose`, `golem`, `wyrm` (bosses), `growl`/`huskdie` (Husk), `howl`/`snarl` (Spirit Wolf), `step` (Bigfoot footfalls).
+- **Ambience:** `audio.ambience('forest' | 'canyon' | 'storm' | null)` loops crickets/breeze, desert wind or rain/wind under the music.
 - Audio unlocks on the first key, click or touch (a browser rule). **M** toggles mute, and the setting is remembered in localStorage.
 
 ## Code map
@@ -90,6 +94,7 @@ src/
   scenes/HudScene.ts   HUD (separate scene so it ignores camera shake/zoom)
   scenes/MenuScene.ts  title + hero select + difficulty
   scenes/MiscScenes.ts Boot, Pause, Result
+  scenes/TouchScene.ts on-screen joystick + buttons for phones/tablets
 ```
 
 ## Conventions

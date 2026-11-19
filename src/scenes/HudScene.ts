@@ -3,6 +3,7 @@ import { COLORS, FONT_TITLE, FONT_UI, GAME_W } from '../config';
 import type { GameScene } from './GameScene';
 import { drawHumanoid, heroLook } from '../gfx/Puppet';
 import { hasSprite } from '../gfx/Sprites';
+import { isTouchDevice } from '../systems/Controls';
 
 /** Screen-space UI, kept in its own scene so camera shake/zoom never touch it. */
 export class HudScene extends Phaser.Scene {
@@ -52,7 +53,7 @@ export class HudScene extends Phaser.Scene {
     this.bossName = txt(GAME_W / 2, 632, '', 26, '#e8b8ff', FONT_TITLE).setOrigin(0.5, 1).setAlpha(0);
 
     const pad = this.gs.controls.usingPad;
-    this.hint = txt(GAME_W / 2, 690, pad
+    this.hint = txt(GAME_W / 2, 690, isTouchDevice() ? 'Left: move · Right: jump / punch / kick / dash · II pause' : pad
       ? 'Stick/D-pad move · A jump · X punch · Y kick · B dash · Start pause'
       : 'A/D move · W/Space jump · S crouch · J punch · K kick · L/Shift dash · Esc pause', 16, '#d8e6e8').setOrigin(0.5);
     this.tweens.add({ targets: this.hint, alpha: 0, delay: 9000, duration: 1200 });

@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { COLORS, DIFFICULTY, Difficulty, GAME_H, GAME_W, GROUND_Y, HeroId, STAGES, StageDef } from '../config';
-import { Controls } from '../systems/Controls';
+import { Controls, isTouchDevice } from '../systems/Controls';
 import { Fx } from '../systems/Fx';
 import { audio } from '../systems/Audio';
 import { Parallax, THEMES } from '../gfx/Parallax';
@@ -103,7 +103,8 @@ export class GameScene extends Phaser.Scene {
     cam.fadeIn(500, 0, 0, 0);
 
     this.scene.launch('Hud');
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scene.stop('Hud'));
+    if (isTouchDevice()) { this.scene.launch('Touch'); this.scene.bringToTop('Touch'); }
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => { this.scene.stop('Hud'); this.scene.stop('Touch'); });
 
     this.time.delayedCall(400, () => {
       this.events.emit('banner', `STAGE ${S.id} · ${S.name.toUpperCase()}`, '#ffe6a8', 54);
