@@ -247,7 +247,7 @@ export class Crow extends Enemy {
     this.modeT -= dt;
     switch (this.mode) {
       case 'hover': {
-        const tx = p.x + this.side * 170, ty = 405 + Math.sin(this.animT * 2) * 18;
+        const tx = p.x + this.side * 170, ty = 445 + Math.sin(this.animT * 2) * 14;
         this.body.setVelocity((tx - this.x) * 2.2, (ty - this.y) * 2.2);
         this.faceToward(p.x);
         if (this.modeT <= 0 && p.alive) {

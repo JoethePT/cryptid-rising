@@ -66,6 +66,8 @@ export class Player extends Phaser.GameObjects.Container {
   private charge?: ActiveAttack;
   private dashT = 0;
   private dashCd = 0;
+  private bufT = 0;
+  private bufKey: 'punch' | 'kick' = 'punch';
   private hurtT = 0;
   private airKickUsed = false;
 
@@ -143,19 +145,19 @@ export class Player extends Phaser.GameObjects.Container {
     const m = this.hero.dmgMul * this.formDef.dmg;
     switch (kind) {
       case 'punch':
-        return { kind, pose: 'punch', startup: 0.07, active: 0.08, recover: 0.13, dmg: 10 * m, x: 42 * s, y: -84 * s, w: 50 * s, h: 30 * s, knock: 140, heavy: false };
+        return { kind, pose: 'punch', startup: 0.045, active: 0.1, recover: 0.08, dmg: 10 * m, x: 46 * s, y: -88 * s, w: 72 * s, h: 56 * s, knock: 140, heavy: false };
       case 'cpunch':
-        return { kind, pose: 'punch', crouch: true, startup: 0.07, active: 0.08, recover: 0.13, dmg: 10 * m, x: 42 * s, y: -52 * s, w: 50 * s, h: 30 * s, knock: 140, heavy: false };
+        return { kind, pose: 'punch', crouch: true, startup: 0.045, active: 0.1, recover: 0.08, dmg: 10 * m, x: 46 * s, y: -52 * s, w: 72 * s, h: 44 * s, knock: 140, heavy: false };
       case 'kick':
-        return { kind, pose: 'kick', startup: 0.11, active: 0.09, recover: 0.18, dmg: 14 * m, x: 50 * s, y: -60 * s, w: 60 * s, h: 32 * s, knock: 280, heavy: true };
+        return { kind, pose: 'kick', startup: 0.075, active: 0.11, recover: 0.12, dmg: 14 * m, x: 54 * s, y: -64 * s, w: 82 * s, h: 56 * s, knock: 280, heavy: true };
       case 'ckick':
-        return { kind, pose: 'kick', crouch: true, startup: 0.09, active: 0.1, recover: 0.2, dmg: 12 * m, x: 48 * s, y: -16 * s, w: 64 * s, h: 26 * s, knock: 200, heavy: true };
+        return { kind, pose: 'kick', crouch: true, startup: 0.06, active: 0.11, recover: 0.14, dmg: 12 * m, x: 52 * s, y: -18 * s, w: 82 * s, h: 36 * s, knock: 200, heavy: true };
       case 'airkick':
-        return { kind, pose: 'airkick', startup: 0.04, active: 0.32, recover: 0.05, dmg: 15 * m, x: 36 * s, y: -40 * s, w: 56 * s, h: 42 * s, knock: 260, heavy: true };
+        return { kind, pose: 'airkick', startup: 0.03, active: 0.36, recover: 0.05, dmg: 15 * m, x: 40 * s, y: -50 * s, w: 76 * s, h: 72 * s, knock: 260, heavy: true };
       case 'pound':
-        return { kind, pose: 'pound', startup: 0.3, active: 0.1, recover: 0.32, dmg: 42 * this.hero.dmgMul, x: 80, y: -60, w: 190, h: 120, knock: 420, heavy: true };
+        return { kind, pose: 'pound', startup: 0.22, active: 0.1, recover: 0.24, dmg: 42 * this.hero.dmgMul, x: 80, y: -60, w: 190, h: 120, knock: 420, heavy: true };
       case 'log':
-        return { kind, pose: 'throw', startup: 0.22, active: 0.05, recover: 0.26, dmg: 0, x: 0, y: 0, w: 0, h: 0, knock: 0, heavy: false };
+        return { kind, pose: 'throw', startup: 0.16, active: 0.05, recover: 0.2, dmg: 0, x: 0, y: 0, w: 0, h: 0, knock: 0, heavy: false };
       case 'slash':
         return { kind, pose: 'slash', startup: 0.06, active: 0.1, recover: 0.13, dmg: 22 * this.hero.dmgMul, x: 85, y: -70, w: 130, h: 90, knock: 240, heavy: false };
       case 'pounce':
@@ -171,8 +173,31 @@ export class Player extends Phaser.GameObjects.Container {
     }
   }
 
+  /** Nearest living enemy (or boss) within reach, used to auto-face attacks. */
+  private nearestTarget(range: number) {
+    let best: { x: number; y: number; flying: boolean } | undefined, bd = range;
+    const list = [...this.gs.enemies, ...(this.gs.boss ? [this.gs.boss] : [])];
+    for (const e of list) {
+      if (!e || e.dead || !e.active) continue;
+      const dx = Math.abs(e.x - this.x), dy = Math.abs(e.y - this.y);
+      if (dy > 320) continue;
+      if (dx < bd) { bd = dx; best = { x: e.x, y: e.y, flying: e.flying }; }
+    }
+    return best;
+  }
+
   private startAttack(kind: AttackKind) {
-    this.atk = { def: this.def(kind), t: 0, fired: false, hit: new Set() };
+    const def = this.def(kind);
+    // turn toward the closest enemy so you don't have to line up perfectly (most useful on touch)
+    const t = this.nearestTarget(kind === 'log' || kind === 'breath' ? 600 : 300);
+    if (t && Math.abs(t.x - this.x) > 12) this.facing = t.x > this.x ? 1 : -1;
+    // standing punch under a bird becomes an upward strike
+    if (kind === 'punch' && t?.flying && this.y - t.y > 120 && Math.abs(t.x - this.x) < 170) {
+      const s = this.formDef.scale * HS;
+      def.x = 28 * s; def.y = -175 * s; def.w = 96 * s; def.h = 130 * s;
+    }
+    this.atk = { def, t: 0, fired: false, hit: new Set() };
+    this.bufT = 0;
     audio.sfx(kind === 'pounce' ? 'pounce' : kind === 'log' ? 'throw' : 'swing');
     if (kind === 'airkick') this.airKickUsed = true;
   }
@@ -244,6 +269,16 @@ export class Player extends Phaser.GameObjects.Container {
       else if (a.t >= d.startup + d.active + d.recover) this.atk = undefined;
     }
 
+    // remember a punch/kick pressed mid-attack, and let it cut the recovery short
+    this.bufT = Math.max(0, this.bufT - dt);
+    if (c.pressed('punch')) { this.bufT = 0.22; this.bufKey = 'punch'; }
+    else if (c.pressed('kick')) { this.bufT = 0.22; this.bufKey = 'kick'; }
+    if (this.atk && this.bufT > 0) {
+      const d = this.atk.def;
+      const chainable = d.kind !== 'pounce' && d.kind !== 'airkick' && d.kind !== 'charge';
+      if (chainable && this.atk.t > d.startup + d.active * 0.6) this.atk = undefined;
+    }
+
     if (this.isDragon) { this.updateFlight(dt); this.draw(); return; }
 
     const left = c.isDown('left'), right = c.isDown('right');
@@ -279,16 +314,17 @@ export class Player extends Phaser.GameObjects.Container {
     if (!c.isDown('jump') && b.velocity.y < -260) b.setVelocityY(b.velocity.y * 0.55);
 
     if (!this.atk) {
+      const P = this.bufT > 0 && this.bufKey === 'punch', K = this.bufT > 0 && this.bufKey === 'kick';
       if (this.isRaptor) {
-        if (c.pressed('punch')) this.startAttack('slash');
-        else if (c.pressed('kick')) this.startAttack(this.onGround ? 'pounce' : 'slash');
+        if (P) this.startAttack('slash');
+        else if (K) this.startAttack(this.onGround ? 'pounce' : 'slash');
       } else if (this.isBeast) {
-        if (c.pressed('punch') && this.onGround) this.startAttack('pound');
-        else if (c.pressed('kick')) this.startAttack('log');
+        if (P && this.onGround) this.startAttack('pound');
+        else if (K) this.startAttack('log');
       } else if (this.onGround) {
-        if (c.pressed('punch')) this.startAttack(this.crouching ? 'cpunch' : 'punch');
-        else if (c.pressed('kick')) this.startAttack(this.crouching ? 'ckick' : 'kick');
-      } else if ((c.pressed('punch') || c.pressed('kick')) && !this.airKickUsed) {
+        if (P) this.startAttack(this.crouching ? 'cpunch' : 'punch');
+        else if (K) this.startAttack(this.crouching ? 'ckick' : 'kick');
+      } else if ((P || K) && !this.airKickUsed) {
         this.startAttack('airkick');
       }
     }
@@ -322,8 +358,8 @@ export class Player extends Phaser.GameObjects.Container {
     if (this.y < FLY_CEILING) { this.y = FLY_CEILING; if (b.velocity.y < 0) b.setVelocityY(0); }
 
     if (!this.atk) {
-      if (c.pressed('punch')) this.startAttack('claw');
-      else if (c.pressed('kick')) this.startAttack('breath');
+      if (this.bufT > 0 && this.bufKey === 'punch') this.startAttack('claw');
+      else if (this.bufT > 0 && this.bufKey === 'kick') this.startAttack('breath');
     }
     if (c.pressed('dash') && this.dashCd <= 0 && !this.atk) {
       if (left) this.facing = -1;
