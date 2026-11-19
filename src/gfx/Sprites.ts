@@ -21,8 +21,8 @@ export const SPRITES: Record<string, SpriteDef> = {
   'raptor-idle': { h: 150, ax: 0.55 }, 'raptor-run': { h: 118, ax: 0.5 }, 'raptor-slash': { h: 150, ax: 0.5 },
   'raptor-pounce': { h: 132, ax: 0.5, fallback: 'raptor-run' }, 'raptor-roar': { h: 210, ax: 0.5, fallback: 'raptor-slash' },
   // Storm Dragon (stage 3 beast, flies)
-  'dragon-hover': { h: 150, ax: 0.58 }, 'dragon-glide': { h: 120, ax: 0.5, fallback: 'dragon-hover' },
-  'dragon-claw': { h: 150, ax: 0.5, fallback: 'dragon-hover' }, 'dragon-breath': { h: 150, ax: 0.5, fallback: 'dragon-hover' },
+  'dragon-hover': { h: 150, ax: 0.58 }, 'dragon-glide': { h: 125, ax: 0.55, fallback: 'dragon-hover' },
+  'dragon-claw': { h: 150, ax: 0.5, fallback: 'dragon-hover' }, 'dragon-breath': { h: 150, ax: 0.4, fallback: 'dragon-hover' },
   // Enemies
   'husk-walk': { h: 150, ax: 0.5 }, 'husk-windup': { h: 162, ax: 0.5 }, 'husk-swipe': { h: 146, ax: 0.45 },
   'crow-fly': { h: 92, ax: 0.5 }, 'crow-swoop': { h: 84, ax: 0.5 },

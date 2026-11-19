@@ -89,11 +89,35 @@
   "srcH": 1825,
   "w": 238
  },
+ "dragon-breath": {
+  "ax": 0.27,
+  "h": 440,
+  "srcH": 1039,
+  "w": 809
+ },
+ "dragon-glide": {
+  "ax": 0.477,
+  "h": 440,
+  "srcH": 936,
+  "w": 886
+ },
  "dragon-hover": {
   "ax": 0.339,
   "h": 440,
   "srcH": 694,
   "w": 638
+ },
+ "golem-lunge": {
+  "ax": 0.408,
+  "h": 438,
+  "srcH": 438,
+  "w": 1015
+ },
+ "golem-roar": {
+  "ax": 0.657,
+  "h": 440,
+  "srcH": 757,
+  "w": 542
  },
  "golem-walk": {
   "ax": 0.744,

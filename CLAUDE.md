@@ -41,8 +41,8 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 | # | Stage | Beast | Boss | Status |
 |---|---|---|---|---|
 | 1 | Old-Growth Forest | Bigfoot | Moose Titan | **playable** |
-| 2 | Fossil Canyon | Velociraptor | Fossil Golem | **playable** (golem roar/lunge art pending, falls back to walk pose) |
-| 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | **playable** (dragon uses a preview-res sprite; wyrm uses a drawn fallback until its art exports) |
+| 2 | Fossil Canyon | Velociraptor | Fossil Golem | **playable** |
+| 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | **playable** |
 | 4 | Ember Mill | Elder Bigfoot | Sawmill Behemoth | planned |
 | 5 | Tar Pit Bayou | Alpha Raptor | Tar Leviathan | planned |
 | 6 | The Hollow Rift | Elder Dragon | The Hollow Heart | planned |
