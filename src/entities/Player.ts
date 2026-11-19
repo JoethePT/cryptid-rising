@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
 import { BEASTS, BeastId, COLORS, FORMS, GROUND_Y, HEROES, HeroDef, HeroId } from '../config';
 import { bigfootLook, drawHumanoid, heroLook, Look, Pose, PoseState } from '../gfx/Puppet';
-import { applySprite, spritesReady } from '../gfx/Sprites';
+import { applySprite, spritesReady, makeHalo, shaderFxOk, syncHalo } from '../gfx/Sprites';
 import { audio } from '../systems/Audio';
 
 /** Human attacks were tuned for a 108px-tall puppet; painted sprites are bigger. */
@@ -54,6 +54,7 @@ export class Player extends Phaser.GameObjects.Container {
   private g: Phaser.GameObjects.Graphics;
   private spr: Phaser.GameObjects.Image;
   private glow?: Phaser.FX.Glow;
+  private halo?: Phaser.GameObjects.Image;
   private useSprites: boolean;
   private beastSprites: boolean;
   private trailT = 0;
@@ -81,12 +82,14 @@ export class Player extends Phaser.GameObjects.Container {
     // the beast can fall back to the drawn puppet on its own if its art is missing
     this.beastSprites = spritesReady(gs, BEAST_POSES[beast].map((p) => `${beast}-${p}`));
     this.spr = gs.add.image(0, 0, this.useSprites ? `${heroId}-idle` : '__DEFAULT').setVisible(this.useSprites);
-    if (this.useSprites && this.spr.preFX) {
+    if (this.useSprites && this.spr.preFX && shaderFxOk()) {
       this.spr.preFX.setPadding(18);
       this.glow = this.spr.preFX.addGlow(COLORS.spirit, 0, 0, false, 0.1, 12);
+    } else if (this.useSprites) {
+      this.halo = makeHalo(gs, this.spr, COLORS.spirit);
     }
     this.g.setVisible(!this.useSprites);
-    this.add([this.shadow, this.aura, this.spr, this.g]);
+    this.add([this.shadow, this.aura, ...(this.halo ? [this.halo] : []), this.spr, this.g]);
     gs.add.existing(this);
     gs.physics.add.existing(this);
     this.body.setCollideWorldBounds(true);
@@ -511,6 +514,11 @@ export class Player extends Phaser.GameObjects.Container {
       const pulse = 0.5 + 0.5 * Math.sin(this.animT * 6);
       this.glow.color = this.isBeast ? COLORS.beast : COLORS.spirit;
       this.glow.outerStrength = [0, 1.5, 3, 2.5][this.form] + (this.form ? pulse * 1.2 : 0);
+    }
+    if (this.halo) {
+      const pulse = 0.5 + 0.5 * Math.sin(this.animT * 6);
+      const str = this.form ? [0, 0.45, 0.75, 0.65][this.form] + pulse * 0.25 : 0;
+      syncHalo(this.halo, this.spr, this.isBeast ? COLORS.beast : COLORS.spirit, str);
     }
     // red flash right after a hit
     const now = this.gs.time.now;

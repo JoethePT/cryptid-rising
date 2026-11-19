@@ -3,7 +3,7 @@ import type { GameScene } from '../scenes/GameScene';
 import { GROUND_Y } from '../config';
 import { COLORS } from '../config';
 import { drawCrow, drawHumanoid, drawWolf, flashLook, huskLook, Look, Pose } from '../gfx/Puppet';
-import { applySprite, spritesReady } from '../gfx/Sprites';
+import { applySprite, makeHalo, shaderFxOk, spritesReady, syncHalo } from '../gfx/Sprites';
 import { audio } from '../systems/Audio';
 
 export type EnemyKind = 'husk' | 'crow' | 'wolf';
@@ -14,6 +14,9 @@ export abstract class Enemy extends Phaser.GameObjects.Container {
   protected shadow: Phaser.GameObjects.Graphics;
   /** Painted sprite (when the art is loaded); `g` is then used only for overlays. */
   protected spr?: Phaser.GameObjects.Image;
+  private halo?: Phaser.GameObjects.Image;
+  private haloColor = 0;
+  private haloStrength = 0;
   hp: number;
   maxHp: number;
   facing: 1 | -1 = -1;
@@ -49,9 +52,14 @@ export abstract class Enemy extends Phaser.GameObjects.Container {
     if (!spritesReady(this.gs, keys)) return false;
     this.spr = this.gs.add.image(0, 0, keys[0]);
     this.addAt(this.spr, 1);
-    if (glow !== undefined && this.spr.preFX) {
+    if (glow !== undefined && this.spr.preFX && shaderFxOk()) {
       this.spr.preFX.setPadding(14);
       this.spr.preFX.addGlow(glow, glowStrength, 0, false, 0.1, 10);
+    } else if (glow !== undefined) {
+      this.halo = makeHalo(this.gs, this.spr, glow);
+      this.haloColor = glow;
+      this.haloStrength = Math.min(1, glowStrength / 3);
+      this.addAt(this.halo, 1);
     }
     return true;
   }
@@ -66,6 +74,7 @@ export abstract class Enemy extends Phaser.GameObjects.Container {
     spr.setPosition((opts.dx ?? 0) * this.facing, opts.dy ?? 0);
     if (this.flashT > 0) spr.setTintFill(0xffffff);
     else spr.clearTint();
+    if (this.halo) syncHalo(this.halo, spr, this.haloColor, this.haloStrength);
   }
 
   hurtRect() {

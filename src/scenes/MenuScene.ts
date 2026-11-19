@@ -4,7 +4,7 @@ import { Controls, isTouchDevice } from '../systems/Controls';
 import { audio } from '../systems/Audio';
 import { Parallax } from '../gfx/Parallax';
 import { bigfootLook, drawHumanoid, heroLook } from '../gfx/Puppet';
-import { applySprite, hasSprite } from '../gfx/Sprites';
+import { applySprite, hasSprite, shaderFxOk } from '../gfx/Sprites';
 
 const HERO_IDS: HeroId[] = ['mara', 'dez'];
 const DIFFS: Difficulty[] = ['easy', 'normal', 'hard'];
@@ -63,7 +63,7 @@ export class MenuScene extends Phaser.Scene {
         puppet.setVisible(false);
         art = this.add.image(x - 110, 520, `${id}-idle`);
         applySprite(art, `${id}-idle`, 1, 1.75);
-        if (art.preFX) { art.preFX.setPadding(16); glow = art.preFX.addGlow(COLORS.spirit, 0, 0, false, 0.1, 12); }
+        if (art.preFX && shaderFxOk()) { art.preFX.setPadding(16); glow = art.preFX.addGlow(COLORS.spirit, 0, 0, false, 0.1, 12); }
       }
       const h = HEROES[id];
       this.add.text(x - 20, 250, h.name.toUpperCase(), { fontFamily: FONT_TITLE, fontSize: '40px', color: '#ffe6a8', stroke: '#1a1420', strokeThickness: 6 });

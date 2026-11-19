@@ -74,3 +74,29 @@ export function applySprite(img: Phaser.GameObjects.Image, key: string, facing: 
 export function spritesReady(scene: Phaser.Scene, keys: string[]) {
   return keys.every((k) => hasSprite(scene, k) || (!!SPRITES[k]?.fallback && hasSprite(scene, SPRITES[k].fallback!)));
 }
+
+/**
+ * Phaser's shader glow (preFX) draws as a solid coloured box on many phone GPUs, so phones and
+ * tablets use a cheap additive "halo" copy of the sprite instead. `?fx` / `?nofx` override.
+ */
+export function shaderFxOk() {
+  const q = new URLSearchParams(location.search);
+  if (q.has('nofx')) return false;
+  if (q.has('fx')) return true;
+  const touch = 'ontouchstart' in window || (navigator.maxTouchPoints ?? 0) > 0;
+  return !touch;
+}
+
+/** Make a halo image (added behind `spr` by the caller) that fakes a glow without shaders. */
+export function makeHalo(scene: Phaser.Scene, spr: Phaser.GameObjects.Image, color: number) {
+  return scene.add.image(0, 0, spr.texture.key).setBlendMode(Phaser.BlendModes.ADD).setTintFill(color).setAlpha(0);
+}
+
+/** Copy the sprite's current pose onto its halo, slightly enlarged. `strength` 0..1. */
+export function syncHalo(halo: Phaser.GameObjects.Image, spr: Phaser.GameObjects.Image, color: number, strength: number) {
+  if (halo.texture.key !== spr.texture.key) halo.setTexture(spr.texture.key);
+  halo.setOrigin(spr.originX, spr.originY);
+  halo.setScale(spr.scaleX * 1.07, spr.scaleY * 1.04);
+  halo.setPosition(spr.x, spr.y).setRotation(spr.rotation);
+  halo.setVisible(spr.visible && strength > 0).setTintFill(color).setAlpha(Phaser.Math.Clamp(strength, 0, 1) * 0.55 * spr.alpha);
+}
