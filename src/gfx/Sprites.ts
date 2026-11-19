@@ -19,7 +19,7 @@ export const SPRITES: Record<string, SpriteDef> = {
   'bigfoot-throw': { h: 222 }, 'bigfoot-charge': { h: 196 },
   // Stage 4 beast: the Elder Bigfoot (a little bigger than the young one)
   'elder-idle': { h: 250 }, 'elder-walk': { h: 254, ax: 0.5, fallback: 'elder-idle' }, 'elder-raise': { h: 270, fallback: 'elder-idle' },
-  'elder-slam': { h: 186, fallback: 'elder-idle' }, 'elder-throw': { h: 240, fallback: 'elder-idle' }, 'elder-charge': { h: 214, fallback: 'elder-walk' },
+  'elder-slam': { h: 200, ax: 0.42, fallback: 'elder-idle' }, 'elder-throw': { h: 240, fallback: 'elder-idle' }, 'elder-charge': { h: 214, fallback: 'elder-walk' },
   // Velociraptor (stage 2 beast)
   'raptor-idle': { h: 150, ax: 0.55 }, 'raptor-run': { h: 118, ax: 0.5 }, 'raptor-slash': { h: 150, ax: 0.5 },
   'raptor-pounce': { h: 132, ax: 0.5, fallback: 'raptor-run' }, 'raptor-roar': { h: 210, ax: 0.5, fallback: 'raptor-slash' },
