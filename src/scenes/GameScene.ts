@@ -6,7 +6,7 @@ import { audio } from '../systems/Audio';
 import { Parallax, THEMES } from '../gfx/Parallax';
 import { Player } from '../entities/Player';
 import { Crow, Enemy, EnemyKind, Husk, SpiritWolf } from '../entities/Enemies';
-import { FossilGolem, MooseTitan, ThunderWyrm } from '../entities/Boss';
+import { FossilGolem, MooseTitan, SawmillBehemoth, ThunderWyrm } from '../entities/Boss';
 import { Orb, Projectile, ProjKind } from '../entities/Projectile';
 
 export interface GameData { hero: HeroId; difficulty: Difficulty; stage?: number; lives?: number; score?: number }
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
 
     this.controls = new Controls(this);
     this.fx = new Fx(this);
-    audio.play(S.theme === 'canyon' ? 'canyon' : S.theme === 'storm' ? 'storm' : 'forest');
+    audio.play(S.theme === 'canyon' ? 'canyon' : S.theme === 'storm' ? 'storm' : S.theme === 'mill' ? 'mill' : 'forest');
     audio.ambience(S.theme);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.ambience(null));
     const L = S.length;
@@ -88,9 +88,10 @@ export class GameScene extends Phaser.Scene {
     }
     if (S.theme === 'canyon') this.makeFossilDecor();
     if (S.theme === 'storm') this.makeStorm();
+    if (S.theme === 'mill') this.makeEmbers();
     this.makeArenaDecor();
 
-    this.player = new Player(this, 220, GROUND_Y - 1, this.heroId, S.beast);
+    this.player = new Player(this, 220, GROUND_Y - 1, this.heroId, S.beast, S.beastArt);
     this.physics.add.collider(this.player, this.ground);
     this.physics.add.collider(this.player, platforms);
     this.enemyGroup = this.add.group();
@@ -156,6 +157,17 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(2500, strike);
   }
 
+  /** Embers drifting up from the burning mill, and a warm flicker over the scene. */
+  private makeEmbers() {
+    this.add.particles(0, 0, 'ember', {
+      x: { min: 0, max: GAME_W }, y: { min: GAME_H - 40, max: GAME_H + 20 }, lifespan: { min: 3000, max: 5500 }, frequency: 70,
+      speedX: { min: -30, max: 40 }, speedY: { min: -120, max: -50 }, scale: { start: 1.1, end: 0.2 },
+      alpha: { start: 1, end: 0 }, blendMode: Phaser.BlendModes.ADD,
+    }).setScrollFactor(0).setDepth(35);
+    const warm = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xff7a2a, 0.05).setOrigin(0).setScrollFactor(0).setDepth(36).setBlendMode(Phaser.BlendModes.ADD);
+    this.tweens.add({ targets: warm, alpha: 0.11, duration: 900, yoyo: true, repeat: -1, ease: 'Sine.easeInOut' });
+  }
+
   private makeRockPlatform(group: Phaser.Physics.Arcade.StaticGroup, x: number, y: number, w: number) {
     if (this.stage.theme === 'storm') return this.makeCragPlatform(group, x, y, w);
     const g = this.add.graphics().setDepth(-4);
@@ -212,7 +224,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Each boss has its own voice. */
   bossVoice() {
-    return this.stage.id === 3 ? 'wyrm' : this.stage.id === 2 ? 'golem' : 'moose';
+    return this.stage.id === 4 ? 'behemoth' : this.stage.id === 3 ? 'wyrm' : this.stage.id === 2 ? 'golem' : 'moose';
   }
 
   // ------------------------------------------------------------------ API used by entities
@@ -244,17 +256,26 @@ export class GameScene extends Phaser.Scene {
   }
 
   spawnProjectile(kind: ProjKind, x: number, y: number, dir: number) {
-    const enemyKind = kind === 'ewave' || kind === 'spike' || kind === 'shard' || kind === 'strike' || kind === 'orb';
+    const enemyKind = kind === 'ewave' || kind === 'spike' || kind === 'shard' || kind === 'strike' || kind === 'orb' || kind === 'saw' || kind === 'timber';
     const mul = enemyKind ? this.diff.enemyDmg : this.player.hero.dmgMul;
     if (kind === 'spike') this.time.delayedCall(750, () => audio.sfx('crack'));
     this.projectiles.push(new Projectile(this, kind, x, y, dir, mul));
   }
 
-  playerPound(x: number, y: number) {
+  playerPound(x: number, y: number, elder = false) {
     audio.sfx('slam');
-    this.fx.shake(0.014, 220);
+    this.fx.shake(elder ? 0.02 : 0.014, 220);
     this.fx.ring(x, y - 10, COLORS.beast, 150, 320);
     this.fx.burst(x, y - 10, 0x9a6a3a, 22);
+    if (elder) {
+      // the Elder's pound bursts into embers and sends a second, farther wave
+      this.fx.ring(x, y - 10, 0xff6a1a, 240, 420);
+      this.fx.burst(x, y - 30, 0xffa04a, 26);
+      this.time.delayedCall(160, () => {
+        this.spawnProjectile('pwave', x + 30, y - 24, 1);
+        this.spawnProjectile('pwave', x - 30, y - 24, -1);
+      });
+    }
     this.spawnProjectile('pwave', x + 30, y - 24, 1);
     this.spawnProjectile('pwave', x - 30, y - 24, -1);
   }
@@ -355,7 +376,7 @@ export class GameScene extends Phaser.Scene {
 
     // Full beast transformation
     audio.sfx('powerup');
-    this.time.delayedCall(1150, () => { audio.sfx('transform'); audio.sfx(this.stage.beast); });
+    this.time.delayedCall(1150, () => { audio.sfx('transform'); audio.sfx(this.stage.beastArt === 'elder' ? 'elder' : this.stage.beast); });
     cam.zoomTo(1.3, 450, 'Sine.easeInOut');
     let n = 0;
     this.time.addEvent({
@@ -406,7 +427,9 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('banner', 'WARNING', '#ff4d5e', 80);
     this.time.delayedCall(1800, () => {
       if (this.ended) return;
-      this.boss = this.stage.id === 3
+      this.boss = this.stage.id === 4
+        ? new SawmillBehemoth(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
+        : this.stage.id === 3
         ? new ThunderWyrm(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
         : this.stage.id === 2
           ? new FossilGolem(this, x0 + GAME_W + 260, x0, x0 + GAME_W)

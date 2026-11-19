@@ -17,6 +17,9 @@ export const SPRITES: Record<string, SpriteDef> = {
   // Bigfoot
   'bigfoot-idle': { h: 232 }, 'bigfoot-walk': { h: 236, ax: 0.5 }, 'bigfoot-raise': { h: 262 }, 'bigfoot-slam': { h: 170 },
   'bigfoot-throw': { h: 222 }, 'bigfoot-charge': { h: 196 },
+  // Stage 4 beast: the Elder Bigfoot (a little bigger than the young one)
+  'elder-idle': { h: 250 }, 'elder-walk': { h: 254, ax: 0.5, fallback: 'elder-idle' }, 'elder-raise': { h: 270, fallback: 'elder-idle' },
+  'elder-slam': { h: 186, fallback: 'elder-idle' }, 'elder-throw': { h: 240, fallback: 'elder-idle' }, 'elder-charge': { h: 214, fallback: 'elder-walk' },
   // Velociraptor (stage 2 beast)
   'raptor-idle': { h: 150, ax: 0.55 }, 'raptor-run': { h: 118, ax: 0.5 }, 'raptor-slash': { h: 150, ax: 0.5 },
   'raptor-pounce': { h: 132, ax: 0.5, fallback: 'raptor-run' }, 'raptor-roar': { h: 210, ax: 0.5, fallback: 'raptor-slash' },
@@ -29,6 +32,7 @@ export const SPRITES: Record<string, SpriteDef> = {
   'wolf-run': { h: 104, ax: 0.5 }, 'wolf-lunge': { h: 110, ax: 0.5 },
   'moose-walk': { h: 330, ax: 0.5 }, 'moose-charge': { h: 290, ax: 0.5 },
   'wyrm-fly': { h: 230, ax: 0.5 }, 'wyrm-strike': { h: 250, ax: 0.5, fallback: 'wyrm-fly' },
+  'behemoth-walk': { h: 330, ax: 0.5 }, 'behemoth-swing': { h: 350, ax: 0.5, fallback: 'behemoth-walk' },
   'golem-walk': { h: 320, ax: 0.5 }, 'golem-roar': { h: 360, ax: 0.5, fallback: 'golem-walk' }, 'golem-lunge': { h: 270, ax: 0.5, fallback: 'golem-walk' },
 };
 
@@ -60,7 +64,8 @@ export function preloadSprites(scene: Phaser.Scene) {
 export function applySprite(img: Phaser.GameObjects.Image, key: string, facing: number, scale = 1) {
   let def = SPRITES[key];
   // optional poses fall back to a related one (keeping the requested on-screen height)
-  if (!hasSprite(img.scene, key) && def?.fallback) { key = def.fallback; def = { ...SPRITES[key], h: SPRITES[key].h }; }
+  // follow the fallback chain (e.g. charge -> walk -> idle) to the first loaded pose
+  for (let i = 0; i < 3 && !hasSprite(img.scene, key) && def?.fallback; i++) { key = def.fallback; def = SPRITES[key]; }
   // never switch to a texture that isn't loaded (that would draw Phaser's 'missing' square)
   if (!hasSprite(img.scene, key)) return;
   if (img.texture.key !== key) img.setTexture(key);
@@ -72,7 +77,10 @@ export function applySprite(img: Phaser.GameObjects.Image, key: string, facing: 
 
 /** True if every listed sprite is available (lets entities fall back to the puppet renderer). */
 export function spritesReady(scene: Phaser.Scene, keys: string[]) {
-  return keys.every((k) => hasSprite(scene, k) || (!!SPRITES[k]?.fallback && hasSprite(scene, SPRITES[k].fallback!)));
+  return keys.every((k) => {
+    for (let i = 0; i < 4 && k; i++) { if (hasSprite(scene, k)) return true; k = SPRITES[k]?.fallback ?? ''; }
+    return false;
+  });
 }
 
 /**

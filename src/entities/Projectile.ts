@@ -1,7 +1,7 @@
 import Phaser from 'phaser';
 import { COLORS, GROUND_Y } from '../config';
 
-export type ProjKind = 'log' | 'pwave' | 'ewave' | 'spike' | 'shard' | 'bolt' | 'orb' | 'strike';
+export type ProjKind = 'log' | 'flog' | 'pwave' | 'ewave' | 'spike' | 'shard' | 'bolt' | 'orb' | 'strike' | 'saw' | 'timber';
 
 const STRIKE_WARN = 0.85;
 
@@ -26,6 +26,22 @@ export class Projectile {
       case 'log':
         this.owner = 'player'; this.vx = dir * 720; this.vy = -260; this.grav = 900;
         this.w = 64; this.h = 26; this.dmg = 34 * dmgMul; this.knock = 360; this.life = 2;
+        break;
+      case 'flog':
+        // the Elder Bigfoot's burning log: heavier, and it smashes through a line of enemies
+        this.owner = 'player'; this.vx = dir * 760; this.vy = -240; this.grav = 860;
+        this.w = 76; this.h = 32; this.dmg = 44 * dmgMul; this.knock = 420; this.life = 2; this.pierce = true;
+        break;
+      case 'saw':
+        // Sawmill Behemoth's spinning blade, rolling along the ground: jump it
+        this.owner = 'enemy'; this.vx = dir * 520; this.w = 56; this.h = 56;
+        this.dmg = 16 * dmgMul; this.knock = 0; this.life = 3.2; this.pierce = true;
+        this.y = GROUND_Y - 30;
+        break;
+      case 'timber':
+        // a beam dropped from above; a shadow on the ground shows where it lands
+        this.owner = 'enemy'; this.vx = 0; this.vy = 0; this.grav = 820; this.w = 96; this.h = 40;
+        this.dmg = 16 * dmgMul; this.knock = 0; this.life = 3; this.pierce = false;
         break;
       case 'pwave':
         this.owner = 'player'; this.vx = dir * 640; this.w = 54; this.h = 48;
@@ -91,6 +107,16 @@ export class Projectile {
     this.y += this.vy * dt;
     if (this.kind === 'shard' && this.y >= GROUND_Y - this.h / 2) {
       fx.burst(this.x, GROUND_Y - 6, 0xe8dcc0, 12);
+      this.kill();
+      return;
+    }
+    if (this.kind === 'timber' && this.y >= GROUND_Y - this.h / 2) {
+      fx.burst(this.x, GROUND_Y - 6, 0x9a6a3a, 16);
+      this.kill();
+      return;
+    }
+    if (this.kind === 'flog' && this.y >= GROUND_Y - this.h / 2) {
+      fx.burst(this.x, GROUND_Y - 10, 0xffa04a, 24);
       this.kill();
       return;
     }
@@ -183,6 +209,42 @@ export class Projectile {
       g.fillStyle(0xe8dcc0, 1);
       g.fillTriangle(-9, -24, 9, -24, 0, 26);
       g.fillStyle(0xd4c29c, 1); g.fillCircle(0, -26, 9);
+      return;
+    }
+    if (this.kind === 'saw') {
+      g.rotation = this.age * 22 * this.dir;
+      const r = 28;
+      g.fillStyle(COLORS.hollow, 0.25); g.fillCircle(0, 0, r + 10);
+      g.fillStyle(COLORS.outline, 1); g.fillCircle(0, 0, r + 3);
+      g.fillStyle(0x9aa3ad, 1); g.fillCircle(0, 0, r - 4);
+      g.fillStyle(0xc8d0d8, 1);
+      for (let i = 0; i < 12; i++) {
+        const a = (i / 12) * Math.PI * 2;
+        g.fillTriangle(Math.cos(a) * (r - 5), Math.sin(a) * (r - 5), Math.cos(a + 0.35) * (r - 5), Math.sin(a + 0.35) * (r - 5), Math.cos(a + 0.1) * (r + 6), Math.sin(a + 0.1) * (r + 6));
+      }
+      g.fillStyle(0x5c636b, 1); g.fillCircle(0, 0, 8);
+      g.fillStyle(COLORS.hollow, 0.9); g.fillCircle(0, 0, 4);
+      return;
+    }
+    if (this.kind === 'timber') {
+      g.rotation = 0;
+      const k = Phaser.Math.Clamp(1 - (GROUND_Y - this.y) / 700, 0.15, 1);
+      g.fillStyle(0x000000, 0.45 * k); g.fillEllipse(0, GROUND_Y - this.y - 4, 120 * k, 14 * k);
+      g.fillStyle(COLORS.hollow, 0.3 * k); g.fillEllipse(0, GROUND_Y - this.y - 4, 130 * k, 18 * k);
+      g.fillStyle(COLORS.outline, 1); g.fillRoundedRect(-50, -20, 100, 40, 8);
+      g.fillStyle(0x6e4a2c, 1); g.fillRoundedRect(-47, -17, 94, 34, 7);
+      g.fillStyle(0x4e321d, 1); g.fillRect(-36, -6, 50, 3); g.fillRect(-14, 6, 44, 3);
+      g.fillStyle(0x3a3f45, 1); g.fillRect(-30, -17, 6, 34); g.fillRect(24, -17, 6, 34); // iron bands
+      return;
+    }
+    if (this.kind === 'flog') {
+      g.rotation = this.age * 14 * this.dir;
+      g.fillStyle(0xff7a2a, 0.35); g.fillEllipse(0, 0, 110, 56);
+      g.fillStyle(COLORS.outline, 1); g.fillRoundedRect(-38, -16, 76, 32, 12);
+      g.fillStyle(0x5a3018, 1); g.fillRoundedRect(-35, -13, 70, 26, 10);
+      g.fillStyle(0xff9a3a, 0.9); g.fillRect(-26, -6, 34, 3); g.fillRect(-10, 4, 30, 3);
+      g.fillStyle(0xffd27a, 1); g.fillEllipse(33, 0, 10, 24);
+      for (let i = 0; i < 4; i++) { g.fillStyle(i % 2 ? 0xffb43a : 0xff6a1a, 0.8); g.fillCircle(-30 + i * 20, -16 - Math.random() * 10, 5 + Math.random() * 4); }
       return;
     }
     if (this.kind === 'log') {

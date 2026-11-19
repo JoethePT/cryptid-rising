@@ -6,9 +6,11 @@ An original 2D side-scrolling beat-'em-up. Fight as park ranger **Mara Holt** or
 |---|---|---|
 | 1 · Old-Growth Forest | Bigfoot | Moose Titan |
 | 2 · Fossil Canyon | Velociraptor | Fossil Golem |
-| 3–6 | Storm Dragon, Elder forms… | coming soon |
+| 3 · Storm Peak | Storm Dragon | Thunder Wyrm |
+| 4 · Ember Mill | Elder Bigfoot | Sawmill Behemoth |
+| 5–6 | Alpha Raptor, Elder Dragon | coming soon |
 
-Built with **Phaser 3 + TypeScript + Vite**. It runs in any desktop browser.
+Built with **Phaser 3 + TypeScript + Vite**. It runs in any desktop browser and on phones/tablets (landscape, on-screen controls).
 
 ## Run it
 ```bash

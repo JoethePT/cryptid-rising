@@ -43,7 +43,7 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 | 1 | Old-Growth Forest | Bigfoot | Moose Titan | **playable** |
 | 2 | Fossil Canyon | Velociraptor | Fossil Golem | **playable** |
 | 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | **playable** |
-| 4 | Ember Mill | Elder Bigfoot | Sawmill Behemoth | planned |
+| 4 | Ember Mill | Elder Bigfoot | Sawmill Behemoth | **playable** |
 | 5 | Tar Pit Bayou | Alpha Raptor | Tar Leviathan | planned |
 | 6 | The Hollow Rift | Elder Dragon | The Hollow Heart | planned |
 
@@ -65,13 +65,14 @@ Crouching ducks under Husk swipes.
 Velociraptor moves: **Claw Slash** (J), fast and chainable. **Pounce** (K), a leaping strike that also hits in the air. **Sprint** (dash), very fast and damaging. Fossil Golem: lunge bite, bone spikes from the ground (glow first), shard rain (watch the shadows), summons at 55% and 25% HP.
 Storm Dragon moves: **free flight** (W/Space up, S down). **Claw** (J). **Lightning Breath** (K), a piercing bolt. **Dive** (dash), which goes up or down if you hold those directions. Thunder Wyrm: lightning columns (they flicker first), aimed storm orbs, side sweeps at your height, and swoops that end resting low, which is the window for fighters on foot. It summons crows at 55% and 25% HP.
 Bigfoot moves: **Ground Pound** (J), which hits up close and sends shockwaves both ways. **Log Throw** (K), an arcing projectile. **Shoulder Charge** (dash), which damages enemies.
+Elder Bigfoot (Stage 4, `beastArt: 'elder'` on the stage, `elder-*` sprites, falls back to grey-tinted Bigfoot art): same moves, harder pound with an ember burst and a second shockwave pair, and a burning log that smashes through enemies. Sawmill Behemoth: saw charge (revs with sparks, jump it; it gets stuck in the wall, your opening), rolling sawblades (jump), falling beams (watch the shadows), summons at 55% and 25% HP. It has a procedural fallback (`drawBehemoth`) until `behemoth-*` sprites exist.
 
 ## Audio
 `src/systems/Audio.ts` synthesizes everything, so the game has no audio files:
-- **Music:** original 16-bit console-style songs with 2-operator FM bass and lead, square arpeggios and synth drums. Each song is a chord chart plus a hand-written lead line (16th-note tokens). Tracks: `title`, `forest`, `canyon`, `boss`, `clear`, `gameover`.
+- **Music:** original 16-bit console-style songs with 2-operator FM bass and lead, square arpeggios and synth drums. Each song is a chord chart plus a hand-written lead line (16th-note tokens). Tracks: `title`, `forest`, `canyon`, `storm`, `mill`, `boss`, `clear`, `gameover`.
 - **SFX:** `audio.sfx(name)` covers swing, hit, heavy, hurt, jump, orb, powerup, transform, slam, throw, poof, caw, roar, boom, crack, pounce, zap, thunder, and the menu move/select/pause sounds.
-- **Creature voices** (formant-filtered growl synth): `bigfoot`, `raptor`, `dragon` (transformations), `moose`, `golem`, `wyrm` (bosses), `growl`/`huskdie` (Husk), `howl`/`snarl` (Spirit Wolf), `step` (Bigfoot footfalls).
-- **Ambience:** `audio.ambience('forest' | 'canyon' | 'storm' | null)` loops crickets/breeze, desert wind or rain/wind under the music.
+- **Creature voices** (formant-filtered growl synth): `bigfoot`, `raptor`, `dragon` (transformations), `elder` (Elder Bigfoot), `moose`, `golem`, `wyrm`, `behemoth` (bosses), `growl`/`huskdie` (Husk), `howl`/`snarl` (Spirit Wolf), `step` (Bigfoot footfalls).
+- **Ambience:** `audio.ambience('forest' | 'canyon' | 'storm' | 'mill' | null)` loops crickets/breeze, desert wind, rain/wind or fire crackle/machinery under the music.
 - Audio unlocks on the first key, click or touch (a browser rule). **M** toggles mute, and the setting is remembered in localStorage.
 
 ## Code map

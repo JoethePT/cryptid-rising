@@ -57,6 +57,9 @@ export class Player extends Phaser.GameObjects.Container {
   private halo?: Phaser.GameObjects.Image;
   private useSprites: boolean;
   private beastSprites: boolean;
+  /** sprite-name prefix of the beast art (e.g. 'elder') */
+  private beastArt: string;
+  private ageTint = 0;
   private trailT = 0;
   private aura: Phaser.GameObjects.Graphics;
   private shadow: Phaser.GameObjects.Graphics;
@@ -71,18 +74,25 @@ export class Player extends Phaser.GameObjects.Container {
   private hurtT = 0;
   private airKickUsed = false;
 
-  constructor(private gs: GameScene, x: number, y: number, heroId: HeroId, readonly beast: BeastId = 'bigfoot') {
+  constructor(private gs: GameScene, x: number, y: number, heroId: HeroId, readonly beast: BeastId = 'bigfoot', artId?: string) {
     super(gs, x, y);
     this.hero = HEROES[heroId];
     this.hp = this.hero.maxHp;
-    this.looks = [heroLook(heroId, 0), heroLook(heroId, 1), heroLook(heroId, 2), bigfootLook()];
+    this.beastArt = artId ?? beast;
+    const beastLook = bigfootLook();
+    if (this.isElderArt) Object.assign(beastLook, { top: 0x8c9096, topShade: 0x62666c, sleeve: 0x8c9096, bottom: 0x8c9096, bottomShade: 0x62666c, skin: 0x9a8a7a });
+    this.looks = [heroLook(heroId, 0), heroLook(heroId, 1), heroLook(heroId, 2), beastLook];
     this.shadow = gs.add.graphics();
     this.aura = gs.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.g = gs.add.graphics();
     const sprKeys = ['idle', 'walk', 'punch', 'kick', 'crouch', 'jump', 'hurt'].map((p) => `${heroId}-${p}`);
     this.useSprites = spritesReady(gs, sprKeys);
     // the beast can fall back to the drawn puppet on its own if its art is missing
-    this.beastSprites = spritesReady(gs, BEAST_POSES[beast].map((p) => `${beast}-${p}`));
+    this.beastSprites = spritesReady(gs, BEAST_POSES[beast].map((p) => `${this.beastArt}-${p}`));
+    if (!this.beastSprites && this.beastArt !== beast && spritesReady(gs, BEAST_POSES[beast].map((p) => `${beast}-${p}`))) {
+      // no painted Elder Bigfoot yet: wear the Bigfoot art, greyed with age
+      this.beastArt = beast; this.beastSprites = true; this.ageTint = 0xb8bcc6;
+    }
     this.spr = gs.add.image(0, 0, this.useSprites ? `${heroId}-idle` : '__DEFAULT').setVisible(this.useSprites);
     if (this.useSprites && this.spr.preFX && shaderFxOk()) {
       this.spr.preFX.setPadding(18);
@@ -104,6 +114,9 @@ export class Player extends Phaser.GameObjects.Container {
     const f = FORMS[this.form];
     return this.form === 3 ? { ...f, bodyW: BEASTS[this.beast].bodyW, bodyH: BEASTS[this.beast].bodyH } : f;
   }
+  get isElderArt() { return this.beastArt === 'elder'; }
+  /** Stage 4's Elder Bigfoot hits harder and throws burning logs */
+  get isElder() { return this.isBeast && this.gs.stage.beastArt === 'elder'; }
   get isRaptor() { return this.isBeast && this.beast === 'raptor'; }
   get isDragon() { return this.isBeast && this.beast === 'dragon'; }
   private diveVy = 0;
@@ -155,7 +168,7 @@ export class Player extends Phaser.GameObjects.Container {
       case 'airkick':
         return { kind, pose: 'airkick', startup: 0.03, active: 0.36, recover: 0.05, dmg: 15 * m, x: 40 * s, y: -50 * s, w: 76 * s, h: 72 * s, knock: 260, heavy: true };
       case 'pound':
-        return { kind, pose: 'pound', startup: 0.22, active: 0.1, recover: 0.24, dmg: 42 * this.hero.dmgMul, x: 80, y: -60, w: 190, h: 120, knock: 420, heavy: true };
+        return { kind, pose: 'pound', startup: 0.22, active: 0.1, recover: 0.24, dmg: 42 * this.hero.dmgMul * (this.isElder ? 1.25 : 1), x: 80, y: -60, w: 190, h: 120, knock: 420, heavy: true };
       case 'log':
         return { kind, pose: 'throw', startup: 0.16, active: 0.05, recover: 0.2, dmg: 0, x: 0, y: 0, w: 0, h: 0, knock: 0, heavy: false };
       case 'slash':
@@ -204,7 +217,7 @@ export class Player extends Phaser.GameObjects.Container {
 
   private onActive(d: AttackDef) {
     if (d.kind === 'pound') {
-      this.gs.playerPound(this.x + this.facing * 60, this.y);
+      this.gs.playerPound(this.x + this.facing * 60, this.y, this.isElder);
     } else if (d.kind === 'breath') {
       audio.sfx('zap');
       this.gs.spawnProjectile('bolt', this.x + this.facing * 110, this.y - 62, this.facing);
@@ -212,7 +225,7 @@ export class Player extends Phaser.GameObjects.Container {
       this.body.setVelocity(this.facing * 660, -560);
       this.gs.fx.burst(this.x, this.y - 10, 0xc47a4c, 10);
     } else if (d.kind === 'log') {
-      this.gs.spawnProjectile('log', this.x + this.facing * 70, this.y - 150, this.facing);
+      this.gs.spawnProjectile(this.isElder ? 'flog' : 'log', this.x + this.facing * 70, this.y - 150, this.facing);
     }
   }
 
@@ -480,7 +493,7 @@ export class Player extends Phaser.GameObjects.Container {
       const r = this.raptorPose(pose);
       return this.finishSprite(pose, r.key, r.rot, r.dx, r.dy, r.sx, r.sy);
     }
-    const id = this.isBeast ? 'bigfoot' : this.hero.id;
+    const id = this.isBeast ? this.beastArt : this.hero.id;
     const k = (p: string) => `${id}-${p}`;
     const t = pose.t, p = pose.p;
     let key = k('idle'), rot = 0, dx = 0, dy = 0, sx = 1, sy = 1;
@@ -559,6 +572,7 @@ export class Player extends Phaser.GameObjects.Container {
     // red flash right after a hit
     const now = this.gs.time.now;
     if (this.state === 'hurt' || now < this.invulnUntil - 700) this.spr.setTint(0xff9a9a);
+    else if (this.isBeast && this.ageTint) this.spr.setTint(this.ageTint);
     else this.spr.clearTint();
 
     // afterimages while dashing

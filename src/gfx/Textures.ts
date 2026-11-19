@@ -445,3 +445,184 @@ export function makeStormTextures(scene: Phaser.Scene) {
     ctx.fillStyle = g; ctx.fillRect(1, 0, 2, 28);
   });
 }
+
+// ---------------------------------------------------------------------------------------------
+// Stage 4: Ember Mill. A Hollow-haunted lumber mill at night, the forest behind it smouldering.
+export function makeMillTextures(scene: Phaser.Scene) {
+  canvasTex(scene, 'mi-sky', GAME_W, GAME_H, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+    g.addColorStop(0, '#07060a');
+    g.addColorStop(0.45, '#1c1016');
+    g.addColorStop(0.78, '#4a1f14');
+    g.addColorStop(1, '#7a3416');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GAME_W, GAME_H);
+    // smoke banks lit orange from below
+    const r = rng(404);
+    for (let i = 0; i < 24; i++) {
+      const x = r() * GAME_W, y = 60 + r() * 300, rx = 120 + r() * 220;
+      const cg = ctx.createRadialGradient(x, y, 0, x, y, rx);
+      cg.addColorStop(0, `rgba(${110 + r() * 50},${50 + r() * 30},${40 + r() * 20},0.25)`);
+      cg.addColorStop(1, 'rgba(60,30,30,0)');
+      ctx.fillStyle = cg; ctx.fillRect(x - rx, y - rx, rx * 2, rx * 2);
+    }
+    // a blood-orange moon through the smoke
+    const mg = ctx.createRadialGradient(330, 150, 10, 330, 150, 150);
+    mg.addColorStop(0, 'rgba(255,170,90,0.45)'); mg.addColorStop(1, 'rgba(255,120,60,0)');
+    ctx.fillStyle = mg; ctx.fillRect(180, 0, 300, 300);
+    ctx.fillStyle = '#f2a35e'; ctx.beginPath(); ctx.arc(330, 150, 46, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = 'rgba(160,80,40,0.35)';
+    ctx.beginPath(); ctx.arc(316, 140, 10, 0, Math.PI * 2); ctx.arc(346, 166, 7, 0, Math.PI * 2); ctx.fill();
+  });
+
+  const W = 2048;
+  // distant ridge of burnt pines with fire glowing along it
+  canvasTex(scene, 'mi-ridge', W, GAME_H, (ctx) => {
+    const r = rng(411);
+    const glow = ctx.createLinearGradient(0, 380, 0, 520);
+    glow.addColorStop(0, 'rgba(255,110,40,0)'); glow.addColorStop(1, 'rgba(255,110,40,0.35)');
+    ctx.fillStyle = glow; ctx.fillRect(0, 380, W, 140);
+    ctx.fillStyle = '#1a0e10';
+    ctx.beginPath(); ctx.moveTo(0, GAME_H); ctx.lineTo(0, 500);
+    for (let x = 0; x <= W; x += 64) ctx.lineTo(x, 470 + Math.sin(x / 260) * 25 + r() * 10);
+    ctx.lineTo(W, GAME_H); ctx.closePath(); ctx.fill();
+    for (let i = 0; i < 70; i++) {
+      const x = r() * W, h = 50 + r() * 70;
+      wrap(W, x, (xx) => pine(ctx, xx, 490 + r() * 10, h, '#1a0e10'));
+    }
+    // flickers of fire along the ridge
+    for (let i = 0; i < 28; i++) {
+      const x = r() * W, y = 470 + r() * 30;
+      wrap(W, x, (xx) => {
+        const fg = ctx.createRadialGradient(xx, y, 0, xx, y, 26);
+        fg.addColorStop(0, 'rgba(255,190,90,0.8)'); fg.addColorStop(1, 'rgba(255,90,30,0)');
+        ctx.fillStyle = fg; ctx.fillRect(xx - 26, y - 26, 52, 52);
+      });
+    }
+  });
+  // the mill: sheds, smokestacks, a water wheel and lit windows
+  canvasTex(scene, 'mi-mill', W, GAME_H, (ctx) => {
+    const r = rng(433);
+    const sil = '#120a0c';
+    const shed = (x: number, w: number, h: number) => {
+      const base = 600;
+      ctx.fillStyle = sil;
+      ctx.fillRect(x, base - h, w, h);
+      ctx.beginPath(); ctx.moveTo(x - 14, base - h); ctx.lineTo(x + w / 2, base - h - w * 0.32); ctx.lineTo(x + w + 14, base - h); ctx.closePath(); ctx.fill();
+      // windows
+      for (let k = 0; k < Math.floor(w / 60); k++) {
+        const wx = x + 24 + k * 60, wy = base - h + 30 + (k % 2) * 6;
+        const lit = r() < 0.6;
+        ctx.fillStyle = lit ? `rgba(255,${150 + r() * 60},70,${0.6 + r() * 0.35})` : '#24161a';
+        ctx.fillRect(wx, wy, 22, 26);
+        ctx.fillStyle = sil; ctx.fillRect(wx + 10, wy, 2, 26); ctx.fillRect(wx, wy + 12, 22, 2);
+      }
+    };
+    const stack = (x: number, h: number) => {
+      ctx.fillStyle = sil; ctx.fillRect(x, 600 - h, 30, h); ctx.fillRect(x - 5, 600 - h, 40, 12);
+      ctx.fillStyle = 'rgba(255,120,50,0.6)'; ctx.fillRect(x + 4, 600 - h - 4, 22, 5);
+    };
+    const wheel = (x: number, y: number, rad: number) => {
+      ctx.strokeStyle = sil; ctx.lineWidth = 8;
+      ctx.beginPath(); ctx.arc(x, y, rad, 0, Math.PI * 2); ctx.stroke();
+      ctx.lineWidth = 5;
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + Math.cos(a) * rad, y + Math.sin(a) * rad); ctx.stroke();
+        ctx.fillStyle = sil; ctx.fillRect(x + Math.cos(a) * rad - 8, y + Math.sin(a) * rad - 8, 16, 16);
+      }
+    };
+    const layout = [0, 520, 1040, 1540];
+    layout.forEach((x0, i) => {
+      shed(x0 + 40, 260 + (i % 2) * 60, 140 + (i % 3) * 30);
+      stack(x0 + 360 + (i % 2) * 40, 260 + i * 20);
+      if (i % 2 === 0) wheel(x0 + 30, 560, 70);
+      // conveyor ramp
+      ctx.strokeStyle = sil; ctx.lineWidth = 10;
+      ctx.beginPath(); ctx.moveTo(x0 + 300, 600); ctx.lineTo(x0 + 470, 470); ctx.stroke();
+    });
+    ctx.fillStyle = sil; ctx.fillRect(0, 596, W, GAME_H - 596);
+  });
+  canvasTex(scene, 'mi-smoke', W, GAME_H, (ctx) => {
+    const r = rng(447);
+    for (let i = 0; i < 22; i++) {
+      const x = r() * W, y = 420 + r() * 220, rx = 180 + r() * 220;
+      wrap(W, x, (xx) => {
+        const g = ctx.createRadialGradient(xx, y, 0, xx, y, rx);
+        g.addColorStop(0, 'rgba(120,70,60,0.22)'); g.addColorStop(1, 'rgba(120,70,60,0)');
+        ctx.fillStyle = g; ctx.fillRect(xx - rx, y - rx, rx * 2, rx * 2);
+      });
+    }
+  });
+  // near layer: log piles, lumber stacks and fence posts
+  canvasTex(scene, 'mi-near', W, GAME_H, (ctx) => {
+    const r = rng(459);
+    const sil = '#0c0708';
+    for (let i = 0; i < 9; i++) {
+      const x = (i / 9) * W + r() * 80;
+      wrap(W, x, (xx) => {
+        if (i % 3 === 0) {
+          // pyramid of log ends
+          const rows = 4;
+          for (let row = 0; row < rows; row++) {
+            for (let k = 0; k < rows - row; k++) {
+              const cx = xx + k * 46 + row * 23, cy = 640 - 22 - row * 40;
+              ctx.fillStyle = sil; ctx.beginPath(); ctx.arc(cx, cy, 22, 0, Math.PI * 2); ctx.fill();
+              ctx.strokeStyle = 'rgba(120,60,30,0.45)'; ctx.lineWidth = 2;
+              ctx.beginPath(); ctx.arc(cx, cy, 12, 0, Math.PI * 2); ctx.stroke();
+            }
+          }
+        } else if (i % 3 === 1) {
+          // lumber stack
+          ctx.fillStyle = sil;
+          for (let k = 0; k < 6; k++) ctx.fillRect(xx, 640 - 18 - k * 18, 170 - (k % 2) * 10, 14);
+        } else {
+          // fence
+          ctx.fillStyle = sil;
+          for (let k = 0; k < 6; k++) ctx.fillRect(xx + k * 34, 560, 8, 80);
+          ctx.fillRect(xx - 6, 580, 200, 7); ctx.fillRect(xx - 6, 610, 200, 7);
+        }
+      });
+    }
+    ctx.fillStyle = sil; ctx.fillRect(0, 630, W, GAME_H - 630);
+  });
+  canvasTex(scene, 'mi-ground', 512, 96, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 96);
+    g.addColorStop(0, '#5a3a24'); g.addColorStop(1, '#1e120c');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 96);
+    const r = rng(467);
+    // sawdust and wood chips
+    for (let i = 0; i < 160; i++) {
+      ctx.fillStyle = `rgba(${190 + r() * 50},${140 + r() * 40},${80 + r() * 30},${0.15 + r() * 0.3})`;
+      ctx.fillRect(r() * 512, 6 + r() * 88, 2 + r() * 5, 1 + r() * 2);
+    }
+    // plank walkway on top
+    ctx.fillStyle = '#6e4a2c'; ctx.fillRect(0, 0, 512, 12);
+    ctx.fillStyle = '#3a2416';
+    for (let x = 0; x < 512; x += 64) ctx.fillRect(x, 0, 3, 12);
+    ctx.fillStyle = 'rgba(255,200,140,0.25)'; ctx.fillRect(0, 0, 512, 2);
+  });
+  canvasTex(scene, 'mi-fg', W, 220, (ctx) => {
+    const r = rng(479);
+    ctx.fillStyle = '#050304';
+    for (let i = 0; i < 10; i++) {
+      const x = r() * W, s = 0.6 + r() * 0.6;
+      wrap(W, x, (xx) => {
+        if (i % 2) {
+          // sawn stump
+          ctx.fillRect(xx - 40 * s, 220 - 70 * s, 80 * s, 70 * s);
+          ctx.beginPath(); ctx.ellipse(xx, 220 - 70 * s, 40 * s, 10 * s, 0, 0, Math.PI * 2); ctx.fill();
+        } else {
+          // tufts of dry grass
+          for (let k = 0; k < 9; k++) {
+            ctx.beginPath(); ctx.moveTo(xx + (k - 4) * 9 * s, 220); ctx.lineTo(xx + (k - 4) * 14 * s, 220 - (60 + r() * 50) * s); ctx.lineTo(xx + (k - 3.6) * 9 * s, 220); ctx.fill();
+          }
+        }
+      });
+    }
+  });
+  canvasTex(scene, 'ember', 8, 8, (ctx) => {
+    const g = ctx.createRadialGradient(4, 4, 0, 4, 4, 4);
+    g.addColorStop(0, 'rgba(255,230,160,1)'); g.addColorStop(0.5, 'rgba(255,140,50,0.8)'); g.addColorStop(1, 'rgba(255,80,20,0)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 8);
+  });
+}

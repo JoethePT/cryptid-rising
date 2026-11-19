@@ -79,13 +79,15 @@ export const BEASTS: Record<BeastId, { bodyW: number; bodyH: number; speed: numb
   dragon: { bodyW: 150, bodyH: 100, speed: 1.3, jump: 1.0 },
 };
 
-export type Theme = 'forest' | 'canyon' | 'storm';
+export type Theme = 'forest' | 'canyon' | 'storm' | 'mill';
 
 export interface StageDef {
   id: number;
   name: string;
   beast: BeastId;
   beastName: string;
+  /** sprite-name prefix for the beast art when it differs from the beast id (e.g. the Elder Bigfoot) */
+  beastArt?: string;
   boss: string;
   bossTitle: string;
   implemented: boolean;
@@ -123,7 +125,14 @@ export const STAGES: StageDef[] = [
       { x: 3600, y: 480, w: 200 }, { x: 4300, y: 420, w: 170 }, { x: 5000, y: 500, w: 220 },
     ],
   },
-  { id: 4, name: 'Ember Mill', beast: 'bigfoot', beastName: 'ELDER BIGFOOT', boss: 'SAWMILL BEHEMOTH', bossTitle: 'Iron and Rot', implemented: false, ...NONE },
+  {
+    id: 4, name: 'Ember Mill', beast: 'bigfoot', beastArt: 'elder', beastName: 'ELDER BIGFOOT', boss: 'SAWMILL BEHEMOTH', bossTitle: 'Iron and Rot', implemented: true,
+    theme: 'mill', length: 7200, arenaStart: 5920,
+    platforms: [
+      { x: 1000, y: 510, w: 220 }, { x: 1750, y: 470, w: 180 }, { x: 2050, y: 380, w: 160 },
+      { x: 2900, y: 500, w: 240 }, { x: 3750, y: 450, w: 200 }, { x: 4100, y: 360, w: 160 }, { x: 4900, y: 500, w: 220 },
+    ],
+  },
   { id: 5, name: 'Tar Pit Bayou', beast: 'raptor', beastName: 'ALPHA RAPTOR', boss: 'TAR LEVIATHAN', bossTitle: 'The Sunken Maw', implemented: false, ...NONE },
   { id: 6, name: 'The Hollow Rift', beast: 'dragon', beastName: 'ELDER DRAGON', boss: 'THE HOLLOW HEART', bossTitle: 'Star-Fallen Corruption', implemented: false, ...NONE },
 ];

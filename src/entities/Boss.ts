@@ -504,3 +504,239 @@ export class ThunderWyrm extends Enemy {
     g.fillTriangle(-f * 40, hy - 10, -f * 100, hy - 80 + Math.sin(t * 8) * 20, -f * 130, hy - 10);
   }
 }
+
+type BehemothMode = 'enter' | 'idle' | 'walk' | 'sawWind' | 'sawCharge' | 'stuck' | 'hurl' | 'bellow' | 'summon';
+
+/**
+ * Stage 4 boss: a Hollow-possessed sawmill — a hulking giant of logs and iron with a circular saw for an arm.
+ *  - SAW CHARGE: revs its blade (sparks), then barrels across the arena with the saw low. Jump it.
+ *    It buries the saw in the wall and is STUCK for a moment (your opening).
+ *  - HURL: flings spinning sawblades that roll along the ground (jump them).
+ *  - BELLOW: its smokestack belches and iron-banded beams fall around you (watch the shadows).
+ *  - SUMMON at 55% / 25%: Husks and a crow. Enraged below 50%.
+ */
+export class SawmillBehemoth extends Enemy {
+  private mode: BehemothMode = 'enter';
+  private modeT = 0;
+  private modeLen = 1;
+  private summons = [0.55, 0.25];
+  private didAct = false;
+
+  constructor(gs: GameScene, x: number, private arenaL: number, private arenaR: number) {
+    super(gs, x, GROUND_Y, 820, 250, 250);
+    this.useSprites(['behemoth-walk', 'behemoth-swing'], COLORS.hollow, 2.5);
+    this.isBoss = true;
+    this.facing = -1;
+    this.score = 8000;
+    this.setDepth(8);
+  }
+
+  get enraged() { return this.hp < this.maxHp * 0.5; }
+
+  private set(mode: BehemothMode, len: number) {
+    this.mode = mode; this.modeT = len; this.modeLen = len; this.didAct = false;
+  }
+
+  protected onHit() {
+    this.body.setVelocityX(this.body.velocity.x * 0.5);
+  }
+
+  protected think(dt: number) {
+    const p = this.player, b = this.body;
+    this.modeT -= dt;
+    const leftWall = this.arenaL + 150, rightWall = this.arenaR - 150;
+    switch (this.mode) {
+      case 'enter':
+        b.setVelocityX(-110);
+        if (this.x < this.arenaR - 260) { this.set('bellow', 1.6); audio.sfx('behemoth'); }
+        break;
+      case 'idle':
+      case 'walk': {
+        this.faceToward(p.x);
+        const dist = Math.abs(p.x - this.x);
+        b.setVelocityX(dist > 360 ? this.facing * 90 : 0);
+        this.mode = dist > 360 ? 'walk' : 'idle';
+        if (this.modeT <= 0) {
+          b.setVelocityX(0);
+          if (this.summons.length && this.hp < this.maxHp * this.summons[0]) {
+            this.summons.shift(); this.set('summon', 1.2); audio.sfx('behemoth');
+            this.gs.events.emit('banner', 'THE MILL AWAKENS!', '#d68bff', 40);
+          } else {
+            const r = Math.random();
+            if (r < 0.4) { this.set('sawWind', this.enraged ? 0.7 : 0.95); audio.sfx('saw'); }
+            else if (r < 0.72) this.set('hurl', this.enraged ? 1.5 : 1.3);
+            else this.set('bellow', 1.6);
+          }
+        }
+        break;
+      }
+      case 'sawWind':
+        b.setVelocityX(-this.facing * 25);
+        if (Math.random() < 0.5) this.gs.fx.burst(this.x + this.facing * 150, this.y - 70, 0xffd27a, 1);
+        if (this.modeT <= 0) {
+          audio.sfx('saw');
+          this.set('sawCharge', 1.6); this.contactDmg = 22;
+          b.setVelocityX(this.facing * (this.enraged ? 760 : 640));
+        }
+        break;
+      case 'sawCharge':
+        if (Math.random() < 0.6) this.gs.fx.burst(this.x + this.facing * 150, GROUND_Y - 20, 0xffc070, 1);
+        if ((this.facing < 0 && this.x <= leftWall) || (this.facing > 0 && this.x >= rightWall) || this.modeT <= 0) {
+          b.setVelocityX(0);
+          this.x = Phaser.Math.Clamp(this.x, leftWall, rightWall);
+          this.contactDmg = 0;
+          audio.sfx('clang');
+          this.gs.fx.shake(0.012, 250);
+          this.gs.fx.burst(this.x + this.facing * 140, this.y - 60, 0xffd27a, 18);
+          this.set('stuck', this.enraged ? 1.1 : 1.5);
+        }
+        break;
+      case 'stuck':
+        b.setVelocityX(0);
+        if (this.modeT <= 0) this.set('idle', 0.6);
+        break;
+      case 'hurl': {
+        b.setVelocityX(0);
+        this.faceToward(p.x);
+        const n = this.enraged ? 3 : 2;
+        const step = this.modeLen / (n + 1);
+        if (!this.didAct) {
+          this.didAct = true;
+          for (let i = 0; i < n; i++) {
+            this.gs.time.delayedCall(300 + i * step * 1000, () => {
+              if (this.dead) return;
+              audio.sfx('saw');
+              this.gs.spawnProjectile('saw', this.x + this.facing * 140, GROUND_Y, this.facing);
+            });
+          }
+        }
+        if (this.modeT <= 0) this.set('idle', this.enraged ? 0.7 : 1.0);
+        break;
+      }
+      case 'bellow':
+        b.setVelocityX(0);
+        if (!this.didAct && this.modeT < this.modeLen - 0.4) {
+          this.didAct = true;
+          audio.sfx('behemoth');
+          this.gs.fx.shake(0.01, 500);
+          const n = this.enraged ? 7 : 5;
+          for (let i = 0; i < n; i++) {
+            this.gs.time.delayedCall(250 + i * 200, () => {
+              if (this.dead) return;
+              const x = Phaser.Math.Clamp(this.player.x + Phaser.Math.Between(-260, 260), this.arenaL + 40, this.arenaR - 40);
+              this.gs.spawnProjectile('timber', x, -60, 1);
+            });
+          }
+        }
+        if (Math.random() < 0.5) this.gs.fx.burst(this.x - this.facing * 60, this.y - 300, COLORS.hollow, 1);
+        if (this.modeT <= 0) this.set('idle', 0.9);
+        break;
+      case 'summon':
+        if (this.modeT <= 0) {
+          this.gs.spawnEnemy('husk', -1);
+          this.gs.spawnEnemy('husk', 1);
+          this.gs.spawnEnemy('crow', -1);
+          this.set('idle', 0.8);
+        }
+        break;
+    }
+    this.x = Phaser.Math.Clamp(this.x, leftWall - 10, this.arenaR + 400);
+  }
+
+  protected render() {
+    const p = 1 - this.modeT / this.modeLen;
+    const t = this.animT, s = this.enraged ? 1.06 : 1;
+    const moving = Math.abs(this.body.velocity.x) > 5;
+    const sawRaised = this.mode === 'sawWind' || this.mode === 'hurl' || this.mode === 'summon';
+    const sawLow = this.mode === 'sawCharge' || this.mode === 'stuck';
+    this.g.clear();
+    if (this.spr) {
+      switch (this.mode) {
+        case 'sawWind': this.pose('behemoth-swing', { scale: s, dx: -8 * p, dy: Math.sin(t * 50) * 1.5 }); break;
+        case 'sawCharge': this.pose('behemoth-walk', { scale: s, rot: 0.08, dx: 10, dy: -Math.abs(Math.sin(t * 14)) * 6 }); break;
+        case 'stuck': this.pose('behemoth-walk', { scale: s, rot: 0.12, dx: 16 + Math.sin(t * 40) * 2 }); break;
+        case 'hurl': this.pose(p % 0.5 < 0.25 ? 'behemoth-swing' : 'behemoth-walk', { scale: s }); break;
+        case 'bellow': this.pose('behemoth-swing', { scale: s, dx: Math.sin(t * 40) * 2, sy: 1 + Math.sin(t * 30) * 0.01 }); break;
+        case 'summon': this.pose('behemoth-swing', { scale: s }); break;
+        default: {
+          const ph = t * 5;
+          this.pose('behemoth-walk', { scale: s, dy: moving ? -Math.abs(Math.sin(ph)) * 5 : 0, rot: moving ? Math.sin(ph) * 0.02 : 0, sy: moving ? 1 : 1 + Math.sin(t * 2) * 0.01 });
+        }
+      }
+      if (this.mode === 'summon') this.g.lineStyle(5, COLORS.hollow, 1 - p).strokeCircle(this.facing * 200, -230, 30 + p * 170);
+      return;
+    }
+    // procedural fallback: drawn facing right with feet at (0,0)
+    this.g.setScale(this.facing * s, s);
+    drawBehemoth(this.g, t, { moving, sawRaised, sawLow, flash: this.flashT > 0, bellow: this.mode === 'bellow' });
+    if (this.mode === 'summon') this.g.lineStyle(5, COLORS.hollow, 1 - p).strokeCircle(200, -230, 30 + p * 170);
+  }
+}
+
+/** Procedural Sawmill Behemoth (used until/unless its painted sprites load). Faces right, feet at (0,0). */
+function drawBehemoth(g: Phaser.GameObjects.Graphics, t: number, o: { moving: boolean; sawRaised: boolean; sawLow: boolean; flash: boolean; bellow: boolean }) {
+  const O = COLORS.outline;
+  const wood = o.flash ? 0xffffff : 0x6b4528, woodD = o.flash ? 0xeeeeee : 0x4a2e1a, iron = o.flash ? 0xffffff : 0x3d434a, ironL = 0x6a737c;
+  const step = o.moving ? Math.sin(t * 5) : 0;
+  const bob = o.moving ? -Math.abs(Math.sin(t * 5)) * 5 : Math.sin(t * 2) * 2;
+  // legs: two stumps bound with iron
+  const leg = (x: number, lift: number) => {
+    g.fillStyle(O, 1); g.fillRoundedRect(x - 30, -110 - lift, 60, 112, 10);
+    g.fillStyle(wood, 1); g.fillRoundedRect(x - 26, -106 - lift, 52, 104, 8);
+    g.fillStyle(iron, 1); g.fillRect(x - 28, -70 - lift, 56, 10); g.fillRect(x - 28, -24 - lift, 56, 10);
+  };
+  leg(-50, Math.max(0, step) * 14); leg(50, Math.max(0, -step) * 14);
+  g.translateCanvas(0, bob);
+  // smokestack on the back
+  g.fillStyle(O, 1); g.fillRect(-120, -330, 46, 140);
+  g.fillStyle(iron, 1); g.fillRect(-116, -326, 38, 136);
+  g.fillStyle(ironL, 1); g.fillRect(-122, -334, 50, 12);
+  const puff = o.bellow ? 1.6 : 1;
+  for (let i = 0; i < 3; i++) {
+    const ph = (t * 0.8 + i / 3) % 1;
+    g.fillStyle(COLORS.hollow, 0.35 * (1 - ph)); g.fillCircle(-97 - ph * 40, -340 - ph * 90, (14 + ph * 26) * puff);
+  }
+  // torso: a barrel of stacked logs, hunched forward
+  g.fillStyle(O, 1); g.fillRoundedRect(-100, -270, 200, 170, 30);
+  for (let i = 0; i < 4; i++) {
+    g.fillStyle(i % 2 ? woodD : wood, 1); g.fillRoundedRect(-94, -262 + i * 40, 188, 36, 16);
+    g.fillStyle(0xd9b07a, 1); g.fillEllipse(92, -244 + i * 40, 16, 30);
+    g.lineStyle(2, 0x9a6a3a, 1); g.strokeEllipse(92, -244 + i * 40, 8, 16);
+  }
+  // chains
+  g.lineStyle(6, iron, 1); g.lineBetween(-90, -260, 90, -110); g.lineBetween(-90, -110, 60, -262);
+  // glowing furnace core
+  const glow = 0.6 + 0.4 * Math.sin(t * 6);
+  g.fillStyle(COLORS.hollow, 0.35 * glow); g.fillCircle(10, -185, 46);
+  g.fillStyle(O, 1); g.fillRoundedRect(-22, -212, 64, 54, 8);
+  g.fillStyle(0x2a1830, 1); g.fillRoundedRect(-17, -207, 54, 44, 6);
+  g.fillStyle(COLORS.hollow, glow); g.fillRect(-12, -200, 44, 30);
+  g.fillStyle(iron, 1); for (let k = 0; k < 4; k++) g.fillRect(-12 + k * 13, -200, 4, 30);
+  // head: a sawn stump with burning eyes
+  g.fillStyle(O, 1); g.fillRoundedRect(60, -330, 86, 78, 14);
+  g.fillStyle(wood, 1); g.fillRoundedRect(64, -326, 78, 70, 12);
+  g.fillStyle(0xd9b07a, 1); g.fillEllipse(103, -326, 70, 14);
+  g.fillStyle(COLORS.hollow, 1); g.fillCircle(118, -298, 8); g.fillCircle(96, -298, 6);
+  g.fillStyle(0xffffff, 0.9); g.fillCircle(119, -299, 3);
+  g.fillStyle(O, 1); g.fillRect(84, -274, 52, 8);
+  // back arm: a heavy club of a log
+  g.fillStyle(O, 1); g.fillRoundedRect(-140, -250, 50, 150, 16);
+  g.fillStyle(woodD, 1); g.fillRoundedRect(-136, -246, 42, 142, 14);
+  // saw arm
+  const ang = o.sawRaised ? -0.9 + Math.sin(t * 30) * 0.05 : o.sawLow ? 0.5 : 0.1 + Math.sin(t * 2) * 0.05;
+  const sx = 80 + Math.cos(ang) * 110, sy = -220 + Math.sin(ang) * 110;
+  g.lineStyle(30, O, 1); g.lineBetween(70, -220, sx, sy);
+  g.lineStyle(22, iron, 1); g.lineBetween(70, -220, sx, sy);
+  const R = 62, spin = t * (o.sawRaised || o.sawLow ? 30 : 6);
+  g.fillStyle(COLORS.hollow, 0.18); g.fillCircle(sx, sy, R + 14);
+  g.fillStyle(O, 1); g.fillCircle(sx, sy, R + 4);
+  g.fillStyle(0xaab3bc, 1); g.fillCircle(sx, sy, R - 4);
+  g.fillStyle(0xd8e0e8, 1);
+  for (let i = 0; i < 16; i++) {
+    const a = spin + (i / 16) * Math.PI * 2;
+    g.fillTriangle(sx + Math.cos(a) * (R - 6), sy + Math.sin(a) * (R - 6), sx + Math.cos(a + 0.3) * (R - 6), sy + Math.sin(a + 0.3) * (R - 6), sx + Math.cos(a + 0.08) * (R + 10), sy + Math.sin(a + 0.08) * (R + 10));
+  }
+  g.fillStyle(0x7d868f, 1); g.fillCircle(sx, sy, 18);
+  g.fillStyle(COLORS.hollow, 0.9); g.fillCircle(sx, sy, 7);
+  g.translateCanvas(0, -bob);
+}
