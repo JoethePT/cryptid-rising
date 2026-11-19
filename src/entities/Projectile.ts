@@ -1,7 +1,9 @@
 import Phaser from 'phaser';
 import { COLORS, GROUND_Y } from '../config';
 
-export type ProjKind = 'log' | 'pwave' | 'ewave' | 'spike' | 'shard';
+export type ProjKind = 'log' | 'pwave' | 'ewave' | 'spike' | 'shard' | 'bolt' | 'orb' | 'strike';
+
+const STRIKE_WARN = 0.85;
 
 const SPIKE_WARN = 0.75;
 
@@ -41,6 +43,25 @@ export class Projectile {
         this.owner = 'enemy'; this.vx = 0; this.vy = 0; this.grav = 900; this.w = 34; this.h = 56;
         this.dmg = 14 * dmgMul; this.knock = 0; this.life = 3; this.pierce = false;
         break;
+      case 'bolt':
+        // Storm Dragon's lightning breath
+        this.owner = 'player'; this.vx = dir * 980; this.w = 90; this.h = 34;
+        this.dmg = 22 * dmgMul; this.knock = 220; this.life = 0.55; this.pierce = true;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
+        break;
+      case 'orb':
+        // Thunder Wyrm's storm orb; velocity is set by aim()
+        this.owner = 'enemy'; this.vx = dir * 380; this.w = 34; this.h = 34;
+        this.dmg = 14 * dmgMul; this.knock = 0; this.life = 3.2; this.pierce = false;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
+        break;
+      case 'strike':
+        // lightning column from the sky after a flickering warning
+        this.owner = 'enemy'; this.vx = 0; this.w = 64; this.h = GROUND_Y;
+        this.dmg = 20 * dmgMul; this.knock = 0; this.life = STRIKE_WARN + 0.3; this.pierce = true;
+        this.y = GROUND_Y / 2;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
+        break;
       case 'ewave':
         this.owner = 'enemy'; this.vx = dir * 470; this.w = 44; this.h = 46;
         this.dmg = 18 * dmgMul; this.knock = 0; this.life = 2.4; this.pierce = true;
@@ -51,7 +72,12 @@ export class Projectile {
   }
 
   /** Spikes are harmless while their warning is showing. */
-  get harmless() { return this.kind === 'spike' && this.age < SPIKE_WARN; }
+  get harmless() {
+    return (this.kind === 'spike' && this.age < SPIKE_WARN) || (this.kind === 'strike' && this.age < STRIKE_WARN);
+  }
+
+  /** Set an arbitrary velocity (aimed shots). */
+  aim(vx: number, vy: number) { this.vx = vx; this.vy = vy; return this; }
 
   rect() {
     return new Phaser.Geom.Rectangle(this.x - this.w / 2, this.y - this.h / 2, this.w, this.h);
@@ -81,6 +107,49 @@ export class Projectile {
     const g = this.g;
     g.clear();
     g.setPosition(this.x, this.y);
+    if (this.kind === 'bolt') {
+      g.rotation = 0;
+      const a = Math.min(1, this.life * 4), d = this.dir;
+      g.lineStyle(10, COLORS.spirit, 0.35 * a);
+      g.lineStyle(4, 0xffffff, a);
+      g.beginPath(); g.moveTo(-45 * d, 0);
+      for (let i = 1; i <= 6; i++) g.lineTo((-45 + i * 15) * d, (Math.random() - 0.5) * 24);
+      g.strokePath();
+      g.fillStyle(COLORS.spirit, 0.4 * a); g.fillEllipse(0, 0, 100, 34);
+      return;
+    }
+    if (this.kind === 'orb') {
+      g.rotation = this.age * 6;
+      const pulse = 1 + Math.sin(this.age * 20) * 0.15;
+      g.fillStyle(COLORS.hollow, 0.3); g.fillCircle(0, 0, 26 * pulse);
+      g.fillStyle(COLORS.hollow, 0.8); g.fillCircle(0, 0, 14 * pulse);
+      g.fillStyle(0xffffff, 0.9); g.fillCircle(0, 0, 6);
+      g.lineStyle(2, 0xe8c8ff, 0.9);
+      for (let i = 0; i < 3; i++) { const an = i * 2.1; g.lineBetween(0, 0, Math.cos(an) * 22, Math.sin(an) * 22); }
+      return;
+    }
+    if (this.kind === 'strike') {
+      g.rotation = 0;
+      const top = -GROUND_Y / 2, bot = GROUND_Y / 2;
+      if (this.age < STRIKE_WARN) {
+        const a = 0.25 + 0.5 * Math.abs(Math.sin(this.age * 22));
+        g.lineStyle(2, COLORS.hollow, a); g.lineBetween(0, top, 0, bot);
+        g.fillStyle(COLORS.hollow, 0.3 * a); g.fillEllipse(0, bot - 4, 90, 18);
+        return;
+      }
+      const fade = Math.min(1, this.life / 0.3);
+      g.fillStyle(COLORS.hollow, 0.25 * fade); g.fillRect(-40, top, 80, GROUND_Y);
+      g.lineStyle(14, 0xb47cff, 0.6 * fade);
+      g.beginPath(); g.moveTo(0, top);
+      for (let i = 1; i <= 10; i++) g.lineTo((Math.random() - 0.5) * 40, top + (GROUND_Y * i) / 10);
+      g.strokePath();
+      g.lineStyle(5, 0xffffff, fade);
+      g.beginPath(); g.moveTo(0, top);
+      for (let i = 1; i <= 10; i++) g.lineTo((Math.random() - 0.5) * 26, top + (GROUND_Y * i) / 10);
+      g.strokePath();
+      g.fillStyle(0xffffff, 0.6 * fade); g.fillEllipse(0, bot - 6, 120, 26);
+      return;
+    }
     if (this.kind === 'spike') {
       g.rotation = 0;
       const base = this.h / 2;

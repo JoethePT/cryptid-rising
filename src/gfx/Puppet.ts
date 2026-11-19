@@ -8,7 +8,7 @@ type G = Phaser.GameObjects.Graphics;
 
 export type PoseState =
   | 'idle' | 'run' | 'jump' | 'fall' | 'crouch' | 'punch' | 'kick' | 'airkick' | 'dash'
-  | 'hurt' | 'flex' | 'windup' | 'swipe' | 'pound' | 'throw' | 'slash' | 'pounce';
+  | 'hurt' | 'flex' | 'windup' | 'swipe' | 'pound' | 'throw' | 'slash' | 'pounce' | 'claw' | 'breath';
 
 export interface Pose {
   state: PoseState;

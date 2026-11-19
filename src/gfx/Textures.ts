@@ -318,3 +318,130 @@ export function makeCanyonTextures(scene: Phaser.Scene) {
     }
   });
 }
+
+/** Storm Peak: a mountain summit in a night thunderstorm — jagged snowy peaks, rolling clouds, rain. */
+export function makeStormTextures(scene: Phaser.Scene) {
+  canvasTex(scene, 'st-sky', GAME_W, GAME_H, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+    g.addColorStop(0, '#05070f');
+    g.addColorStop(0.5, '#141d33');
+    g.addColorStop(1, '#2c3b55');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GAME_W, GAME_H);
+    // heavy cloud banks lit from inside
+    const r = rng(61);
+    for (let i = 0; i < 26; i++) {
+      const x = r() * GAME_W, y = 40 + r() * 260, rx = 120 + r() * 220;
+      const cg = ctx.createRadialGradient(x, y, 0, x, y, rx);
+      cg.addColorStop(0, `rgba(${90 + r() * 40},${100 + r() * 40},${150 + r() * 40},0.35)`);
+      cg.addColorStop(1, 'rgba(40,50,80,0)');
+      ctx.fillStyle = cg; ctx.fillRect(x - rx, y - rx, rx * 2, rx * 2);
+    }
+  });
+
+  const W = 2048;
+  canvasTex(scene, 'st-peaks', W, GAME_H, (ctx) => {
+    const r = rng(73);
+    const range = (base: number, amp: number, color: string, snow: string, count: number) => {
+      ctx.fillStyle = color;
+      ctx.beginPath(); ctx.moveTo(0, GAME_H); ctx.lineTo(0, base);
+      const pts: [number, number][] = [];
+      for (let i = 0; i <= count; i++) {
+        const x = (i / count) * W;
+        const y = i === 0 || i === count ? base : base - amp * (0.4 + r() * 0.6);
+        pts.push([x, y]);
+        const mx = x + W / count / 2;
+        pts.push([mx, base - amp * 0.15 * r()]);
+      }
+      pts.forEach(([x, y]) => ctx.lineTo(x, y));
+      ctx.lineTo(W, GAME_H); ctx.closePath(); ctx.fill();
+      // snow caps
+      ctx.fillStyle = snow;
+      for (let i = 0; i < pts.length; i += 2) {
+        const [x, y] = pts[i];
+        if (y > base - amp * 0.5) continue;
+        ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x - 26, y + 40); ctx.lineTo(x - 8, y + 30); ctx.lineTo(x + 6, y + 44); ctx.lineTo(x + 28, y + 38); ctx.closePath(); ctx.fill();
+      }
+    };
+    range(470, 260, '#1b2438', 'rgba(190,205,230,0.55)', 9);
+    range(540, 180, '#141b2b', 'rgba(170,185,215,0.45)', 13);
+  });
+  canvasTex(scene, 'st-clouds', W, GAME_H, (ctx) => {
+    const r = rng(29);
+    for (let i = 0; i < 30; i++) {
+      const x = r() * W, y = 180 + r() * 300, rx = 140 + r() * 200;
+      wrap(W, x, (xx) => {
+        const g = ctx.createRadialGradient(xx, y, 0, xx, y, rx);
+        g.addColorStop(0, 'rgba(120,135,170,0.28)'); g.addColorStop(1, 'rgba(120,135,170,0)');
+        ctx.fillStyle = g; ctx.fillRect(xx - rx, y - rx, rx * 2, rx * 2);
+      });
+    }
+  });
+  canvasTex(scene, 'st-mist', W, GAME_H, (ctx) => {
+    const r = rng(5);
+    for (let i = 0; i < 20; i++) {
+      const x = r() * W, y = 540 + r() * 110, rx = 200 + r() * 240;
+      wrap(W, x, (xx) => {
+        const g = ctx.createRadialGradient(xx, y, 0, xx, y, rx);
+        g.addColorStop(0, 'rgba(170,190,220,0.2)'); g.addColorStop(1, 'rgba(170,190,220,0)');
+        ctx.fillStyle = g; ctx.fillRect(xx - rx, y - rx, rx * 2, rx * 2);
+      });
+    }
+  });
+  // near cliffs: dark crags and a few dead, wind-bent pines
+  canvasTex(scene, 'st-near', W, GAME_H, (ctx) => {
+    const r = rng(83);
+    ctx.fillStyle = '#0b0f1a';
+    for (let i = 0; i < 7; i++) {
+      const x = (i / 7) * W + r() * 100, w = 150 + r() * 160, h = 200 + r() * 220;
+      wrap(W, x, (xx) => {
+        ctx.beginPath(); ctx.moveTo(xx - w / 2, 660);
+        for (let k = 0; k <= 6; k++) {
+          const t = k / 6;
+          ctx.lineTo(xx - w / 2 + w * t + (r() - 0.5) * 30, 660 - h * (0.55 + 0.45 * Math.sin(t * Math.PI)) + (r() - 0.5) * 50);
+        }
+        ctx.lineTo(xx + w / 2, 660); ctx.closePath(); ctx.fill();
+        // bent pine on top
+        const tx = xx + (r() - 0.5) * w * 0.4, ty = 660 - h * 0.95;
+        ctx.strokeStyle = '#0b0f1a'; ctx.lineWidth = 6;
+        ctx.beginPath(); ctx.moveTo(tx, ty + 10); ctx.lineTo(tx + 6, ty - 70); ctx.stroke();
+        for (let b = 0; b < 4; b++) {
+          ctx.lineWidth = 4; ctx.beginPath(); ctx.moveTo(tx + 4, ty - 20 - b * 14); ctx.lineTo(tx + 40 - b * 6, ty - 30 - b * 14); ctx.stroke();
+        }
+      });
+    }
+    ctx.fillRect(0, 630, W, GAME_H - 630);
+  });
+  canvasTex(scene, 'st-ground', 512, 96, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 96);
+    g.addColorStop(0, '#3a4252'); g.addColorStop(1, '#141822');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 96);
+    const r = rng(41);
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = `rgba(15,18,28,${0.3 + r() * 0.4})`;
+      ctx.beginPath(); ctx.ellipse(r() * 512, 18 + r() * 76, 4 + r() * 12, 2 + r() * 5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // snow crust on top
+    ctx.fillStyle = '#c9d4e6'; ctx.fillRect(0, 0, 512, 7);
+    ctx.fillStyle = '#eef3fb';
+    for (let x = 0; x < 512; x += 18) ctx.fillRect(x, 0, 10 + ((x * 7) % 9), 3);
+    ctx.fillStyle = '#9fadc4';
+    for (let x = 4; x < 512; x += 23) ctx.fillRect(x, 7, 8, 3 + ((x * 13) % 5));
+  });
+  canvasTex(scene, 'st-fg', W, 220, (ctx) => {
+    const r = rng(97);
+    ctx.fillStyle = '#05070c';
+    for (let i = 0; i < 9; i++) {
+      const x = r() * W, s = 0.5 + r() * 0.6;
+      wrap(W, x, (xx) => {
+        ctx.beginPath(); ctx.moveTo(xx - 90 * s, 220);
+        ctx.lineTo(xx - 50 * s, 220 - 70 * s); ctx.lineTo(xx - 10 * s, 220 - 110 * s); ctx.lineTo(xx + 40 * s, 220 - 60 * s); ctx.lineTo(xx + 100 * s, 220);
+        ctx.closePath(); ctx.fill();
+      });
+    }
+  });
+  canvasTex(scene, 'raindrop', 4, 28, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 28);
+    g.addColorStop(0, 'rgba(200,215,255,0)'); g.addColorStop(1, 'rgba(200,215,255,0.8)');
+    ctx.fillStyle = g; ctx.fillRect(1, 0, 2, 28);
+  });
+}

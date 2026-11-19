@@ -36,7 +36,7 @@ def cut(path, holes=False):
         lab3, n3 = ndimage.label(pure & ~bg)
         if n3:
             sizes = ndimage.sum(np.ones_like(lab3), lab3, range(1, n3 + 1))
-            big = np.zeros(n3 + 1, bool); big[1:] = sizes > 1500
+            big = np.zeros(n3 + 1, bool); big[1:] = sizes > max(60, a.shape[0] * a.shape[1] * 0.0007)
             bg |= ndimage.binary_dilation(big[lab3], iterations=2)
     # also drop tiny islands of non-bg noise
     fg = ~bg

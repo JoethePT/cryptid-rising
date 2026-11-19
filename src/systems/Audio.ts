@@ -4,9 +4,9 @@
 
 type SfxName =
   | 'swing' | 'hit' | 'heavy' | 'hurt' | 'jump' | 'orb' | 'powerup' | 'transform' | 'slam' | 'throw'
-  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce';
+  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce' | 'zap' | 'thunder';
 
-export type SongName = 'title' | 'forest' | 'canyon' | 'boss' | 'clear' | 'gameover';
+export type SongName = 'title' | 'forest' | 'canyon' | 'storm' | 'boss' | 'clear' | 'gameover';
 
 interface Song {
   bpm: number;
@@ -68,6 +68,22 @@ const SONGS: Record<SongName, Song> = {
       'A5 - - - F5 - - - C6 - B5 - A5 - - -',
       'G5 - - - D5 - - - B4 - D5 - G5 - - -',
       'F5 - E5 - F5 - G5 - E5 - - - - - . .',
+    ].join(' '),
+  },
+  // Stage 3: "Eye of the Squall" — soaring F# minor
+  storm: {
+    bpm: 146, loop: true, bass: 'drive', arp: 'updown',
+    drums: { k: 'x...x..xx...x...', s: '....x.......x.x.', h: 'x.xxx.xxx.xxx.xx' },
+    chords: ['F#m', 'D', 'E', 'C#', 'F#m', 'D', 'Bm', 'C#'],
+    lead: [
+      'F#5 - - - C#5 - - - F#5 - G#5 - A5 - - -',
+      'A5 - G#5 - F#5 - - - D5 - E5 - F#5 - - -',
+      'G#5 - - - E5 - - - B4 - E5 - G#5 - - -',
+      'G#5 - F5 - C#5 - - - - - . . C#5 - E5 -',
+      'F#5 - - - A5 - C#6 - B5 - A5 - G#5 - - -',
+      'F#5 - - - A5 - - - D6 - C#6 - B5 - A5 -',
+      'B5 - - - F#5 - - - D5 - F#5 - B5 - - -',
+      'C#6 - - - G#5 - - - F5 - - - C#5 - . .',
     ].join(' '),
   },
   // Boss: "Hollow Lord" — tense C minor
@@ -321,6 +337,7 @@ class AudioEngine {
   private noise(t: number, dur: number, vol: number, filter: BiquadFilterType, freq: number, dest: AudioNode, q = 1) {
     const ctx = this.ctx!;
     const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+    src.loop = true; // long sounds (thunder) outlast the 1s noise buffer
     const f = ctx.createBiquadFilter(); f.type = filter; f.frequency.value = freq; f.Q.value = q;
     const g = ctx.createGain();
     g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
@@ -423,6 +440,19 @@ class AudioEngine {
         const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1400; bp.Q.value = 3;
         g.gain.setValueAtTime(0.18, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
         o.connect(bp).connect(g).connect(out); o.start(t); o.stop(t + 0.25);
+        break;
+      }
+      case 'zap':
+        tone('sawtooth', 1800, 300, 0.25, 0.1);
+        sweepNoise(0.3, 0.3, 5000, 1200, 'highpass');
+        break;
+      case 'thunder': {
+        // distant rolling thunder: low filtered noise with a slow swell and decay
+        const { f, g } = this.noise(t, 2.6, 0.001, 'lowpass', 260, out, 0.7);
+        g.gain.cancelScheduledValues(t);
+        g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.7, t + 0.08);
+        g.gain.exponentialRampToValueAtTime(0.25, t + 0.6); g.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+        f.frequency.setValueAtTime(420, t); f.frequency.exponentialRampToValueAtTime(120, t + 2.2);
         break;
       }
       case 'move': tone('square', 660, 660, 0.05, 0.06); break;

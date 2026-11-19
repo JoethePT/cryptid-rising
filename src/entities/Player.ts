@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import type { GameScene } from '../scenes/GameScene';
-import { BEASTS, BeastId, COLORS, FORMS, HEROES, HeroDef, HeroId } from '../config';
+import { BEASTS, BeastId, COLORS, FORMS, GROUND_Y, HEROES, HeroDef, HeroId } from '../config';
 import { bigfootLook, drawHumanoid, heroLook, Look, Pose, PoseState } from '../gfx/Puppet';
 import { applySprite, spritesReady } from '../gfx/Sprites';
 import { audio } from '../systems/Audio';
@@ -8,12 +8,15 @@ import { audio } from '../systems/Audio';
 /** Human attacks were tuned for a 108px-tall puppet; painted sprites are bigger. */
 const HS = 1.3;
 
-export type AttackKind = 'punch' | 'kick' | 'cpunch' | 'ckick' | 'airkick' | 'pound' | 'log' | 'charge' | 'slash' | 'pounce';
+export type AttackKind = 'punch' | 'kick' | 'cpunch' | 'ckick' | 'airkick' | 'pound' | 'log' | 'charge' | 'slash' | 'pounce' | 'claw' | 'breath';
+
+/** Highest the flying dragon may go (feet y). */
+const FLY_CEILING = 210;
 
 const BEAST_POSES: Record<BeastId, string[]> = {
   bigfoot: ['idle', 'walk', 'raise', 'slam', 'throw', 'charge'],
   raptor: ['idle', 'run', 'slash', 'pounce', 'roar'],
-  dragon: [],
+  dragon: ['hover', 'glide', 'claw', 'breath'],
 };
 
 export interface AttackDef {
@@ -52,6 +55,7 @@ export class Player extends Phaser.GameObjects.Container {
   private spr: Phaser.GameObjects.Image;
   private glow?: Phaser.FX.Glow;
   private useSprites: boolean;
+  private beastSprites: boolean;
   private trailT = 0;
   private aura: Phaser.GameObjects.Graphics;
   private shadow: Phaser.GameObjects.Graphics;
@@ -72,9 +76,10 @@ export class Player extends Phaser.GameObjects.Container {
     this.shadow = gs.add.graphics();
     this.aura = gs.add.graphics().setBlendMode(Phaser.BlendModes.ADD);
     this.g = gs.add.graphics();
-    const sprKeys = ['idle', 'walk', 'punch', 'kick', 'crouch', 'jump', 'hurt'].map((p) => `${heroId}-${p}`)
-      .concat(BEAST_POSES[beast].map((p) => `${beast}-${p}`));
+    const sprKeys = ['idle', 'walk', 'punch', 'kick', 'crouch', 'jump', 'hurt'].map((p) => `${heroId}-${p}`);
     this.useSprites = spritesReady(gs, sprKeys);
+    // the beast can fall back to the drawn puppet on its own if its art is missing
+    this.beastSprites = spritesReady(gs, BEAST_POSES[beast].map((p) => `${beast}-${p}`));
     this.spr = gs.add.image(0, 0, this.useSprites ? `${heroId}-idle` : '__DEFAULT').setVisible(this.useSprites);
     if (this.useSprites && this.spr.preFX) {
       this.spr.preFX.setPadding(18);
@@ -95,6 +100,8 @@ export class Player extends Phaser.GameObjects.Container {
     return this.form === 3 ? { ...f, bodyW: BEASTS[this.beast].bodyW, bodyH: BEASTS[this.beast].bodyH } : f;
   }
   get isRaptor() { return this.isBeast && this.beast === 'raptor'; }
+  get isDragon() { return this.isBeast && this.beast === 'dragon'; }
+  private diveVy = 0;
   get isBeast() { return this.form === 3; }
   get alive() { return this.state !== 'dead'; }
 
@@ -116,6 +123,8 @@ export class Player extends Phaser.GameObjects.Container {
     this.crouching = false;
     this.atk = undefined;
     this.applyFormBody();
+    // the dragon flies: no gravity while in that form
+    this.body.setAllowGravity(!this.isDragon);
   }
 
   hurtRect() {
@@ -147,7 +156,12 @@ export class Player extends Phaser.GameObjects.Container {
         return { kind, pose: 'slash', startup: 0.06, active: 0.1, recover: 0.13, dmg: 22 * this.hero.dmgMul, x: 85, y: -70, w: 130, h: 90, knock: 240, heavy: false };
       case 'pounce':
         return { kind, pose: 'pounce', startup: 0.1, active: 0.7, recover: 0.1, dmg: 34 * this.hero.dmgMul, x: 60, y: -60, w: 130, h: 90, knock: 380, heavy: true };
+      case 'claw':
+        return { kind, pose: 'claw', startup: 0.05, active: 0.1, recover: 0.14, dmg: 24 * this.hero.dmgMul, x: 85, y: -50, w: 140, h: 110, knock: 260, heavy: false };
+      case 'breath':
+        return { kind, pose: 'breath', startup: 0.12, active: 0.05, recover: 0.24, dmg: 0, x: 0, y: 0, w: 0, h: 0, knock: 0, heavy: false };
       case 'charge':
+        if (this.isDragon) return { kind, pose: 'dash', startup: 0, active: 0.3, recover: 0, dmg: 24 * this.hero.dmgMul, x: 40, y: -50, w: 170, h: 110, knock: 400, heavy: true };
         if (this.isRaptor) return { kind, pose: 'dash', startup: 0, active: 0.26, recover: 0, dmg: 20 * this.hero.dmgMul, x: 50, y: -60, w: 120, h: 100, knock: 360, heavy: true };
         return { kind, pose: 'dash', startup: 0, active: 0.34, recover: 0, dmg: 26 * this.hero.dmgMul, x: 50, y: -105, w: 110, h: 170, knock: 480, heavy: true };
     }
@@ -162,6 +176,9 @@ export class Player extends Phaser.GameObjects.Container {
   private onActive(d: AttackDef) {
     if (d.kind === 'pound') {
       this.gs.playerPound(this.x + this.facing * 60, this.y);
+    } else if (d.kind === 'breath') {
+      audio.sfx('zap');
+      this.gs.spawnProjectile('bolt', this.x + this.facing * 110, this.y - 62, this.facing);
     } else if (d.kind === 'pounce') {
       this.body.setVelocity(this.facing * 660, -560);
       this.gs.fx.burst(this.x, this.y - 10, 0xc47a4c, 10);
@@ -204,9 +221,9 @@ export class Player extends Phaser.GameObjects.Container {
     this.dashCd -= dt;
     if (this.dashT > 0) {
       this.dashT -= dt;
-      b.setVelocity(this.facing * (this.isRaptor ? 950 : this.isBeast ? 640 : 740), 0);
+      b.setVelocity(this.facing * (this.isDragon ? 900 : this.isRaptor ? 950 : this.isBeast ? 640 : 740), this.isDragon ? this.diveVy : 0);
       if (this.dashT <= 0) {
-        b.setAllowGravity(true);
+        b.setAllowGravity(!this.isDragon);
         b.setVelocityX(this.facing * 150);
         this.charge = undefined;
       }
@@ -222,6 +239,8 @@ export class Player extends Phaser.GameObjects.Container {
       else if (d.kind === 'pounce' && a.fired && this.onGround && a.t > d.startup + 0.15) { this.atk = undefined; this.gs.fx.shake(0.006, 100); }
       else if (a.t >= d.startup + d.active + d.recover) this.atk = undefined;
     }
+
+    if (this.isDragon) { this.updateFlight(dt); this.draw(); return; }
 
     const left = c.isDown('left'), right = c.isDown('right');
     if (!this.atk) this.setCrouch(this.onGround && c.isDown('down') && !this.isBeast);
@@ -279,6 +298,36 @@ export class Player extends Phaser.GameObjects.Container {
     this.draw();
   }
 
+  /** Storm Dragon: free 8-way flight between the storm ceiling and the ground. */
+  private updateFlight(dt: number) {
+    const c = this.gs.controls, b = this.body;
+    const left = c.isDown('left'), right = c.isDown('right');
+    const up = c.isDown('up') || c.isDown('jump'), down = c.isDown('down');
+    const sp = this.hero.speed * BEASTS.dragon.speed;
+    const tx = (right ? sp : 0) - (left ? sp : 0);
+    const ty = up ? -sp * 0.85 : down ? sp * 0.85 : Math.sin(this.animT * 3) * 22;
+    const k = Math.min(1, dt * 9);
+    const slow = this.atk ? 0.5 : 1;
+    b.setVelocity(b.velocity.x + (tx * slow - b.velocity.x) * k, b.velocity.y + (ty * slow - b.velocity.y) * k);
+    if (tx !== 0 && !this.atk) this.facing = tx > 0 ? 1 : -1;
+    if (this.y < FLY_CEILING) { this.y = FLY_CEILING; if (b.velocity.y < 0) b.setVelocityY(0); }
+
+    if (!this.atk) {
+      if (c.pressed('punch')) this.startAttack('claw');
+      else if (c.pressed('kick')) this.startAttack('breath');
+    }
+    if (c.pressed('dash') && this.dashCd <= 0 && !this.atk) {
+      if (left) this.facing = -1;
+      if (right) this.facing = 1;
+      this.diveVy = down ? 420 : up ? -380 : 0;
+      this.dashT = 0.3;
+      this.dashCd = 0.6;
+      this.charge = { def: this.def('charge'), t: 0, fired: true, hit: new Set() };
+      this.gs.fx.burst(this.x - this.facing * 40, this.y - 50, COLORS.spirit, 10);
+      audio.sfx('swing');
+    }
+  }
+
   /** Returns true if the hit landed. */
   hurt(dmg: number, fromX: number): boolean {
     const now = this.gs.time.now;
@@ -287,7 +336,7 @@ export class Player extends Phaser.GameObjects.Container {
     this.hp = Math.max(0, this.hp - Math.round(dmg));
     this.atk = undefined;
     this.setCrouch(false);
-    this.body.setAllowGravity(true);
+    this.body.setAllowGravity(!this.isDragon);
     audio.sfx('hurt');
     this.gs.fx.burst(this.x, this.centerY(), COLORS.hurt, 14);
     this.gs.fx.number(this.x, this.y - this.body.height - 10, Math.round(dmg), '#ff6b78', 26);
@@ -333,6 +382,7 @@ export class Player extends Phaser.GameObjects.Container {
       const d = this.atk.def;
       return { state: d.pose, t, p: Math.min(1, this.atk.t / (d.startup + d.active + d.recover)), crouch: d.crouch };
     }
+    if (this.isDragon) return { state: Math.abs(this.body.velocity.x) > 60 ? 'run' : 'idle', t, p: 0 };
     if (!this.onGround) return { state: this.body.velocity.y < 0 ? 'jump' : 'fall', t, p: 0 };
     if (this.crouching) return { state: 'crouch', t, p: 0 };
     if (Math.abs(this.body.velocity.x) > 10) return { state: 'run', t: t * (this.isBeast ? 0.7 : 1), p: 0 };
@@ -359,7 +409,28 @@ export class Player extends Phaser.GameObjects.Container {
     return { key, rot, dx, dy, sx, sy };
   }
 
+  private dragonPose(pose: Pose) {
+    const k = (p: string) => `dragon-${p}`;
+    const t = pose.t, p = pose.p, vy = this.body.velocity.y;
+    let key = k('hover'), rot = 0, dx = 0, dy = Math.sin(t * 3) * 4, sx = 1, sy = 1;
+    switch (pose.state) {
+      case 'idle': sy = 1 + Math.sin(t * 6) * 0.04; break; // wingbeat
+      case 'run': key = k('glide'); rot = Phaser.Math.Clamp(vy / 1400, -0.25, 0.25); dy = 0; break;
+      case 'claw': key = p < 0.2 ? k('hover') : k('claw'); dx = p >= 0.2 && p < 0.6 ? 12 : -4; break;
+      case 'breath': key = k('breath'); dx = p < 0.3 ? -6 : 4; break;
+      case 'dash': key = k('glide'); sx = 1.12; rot = Phaser.Math.Clamp(this.diveVy / 1600, -0.3, 0.3); dy = 0; break;
+      case 'hurt': rot = -0.18; dx = -8; break;
+      case 'flex': key = k('breath'); sx = 1.03 + Math.sin(t * 40) * 0.02; break;
+      default: break;
+    }
+    return { key, rot, dx, dy, sx, sy };
+  }
+
   private drawSprite(pose: Pose) {
+    if (this.isDragon) {
+      const r = this.dragonPose(pose);
+      return this.finishSprite(pose, r.key, r.rot, r.dx, r.dy, r.sx, r.sy);
+    }
     if (this.isRaptor) {
       const r = this.raptorPose(pose);
       return this.finishSprite(pose, r.key, r.rot, r.dx, r.dy, r.sx, r.sy);
@@ -456,7 +527,11 @@ export class Player extends Phaser.GameObjects.Container {
   draw() {
     const pose = this.pose();
     const s = this.formDef.scale;
-    if (this.useSprites) {
+    const painted = this.useSprites && (!this.isBeast || this.beastSprites);
+    this.spr.setVisible(painted);
+    this.g.setVisible(!painted);
+    if (painted) {
+      this.g.clear();
       this.drawSprite(pose);
     } else {
       drawHumanoid(this.g, this.looks[this.form], pose);
@@ -480,6 +555,13 @@ export class Player extends Phaser.GameObjects.Container {
     }
 
     this.shadow.clear();
+    if (this.isDragon) {
+      // flying: the shadow sits on the ground below and shrinks with altitude
+      const alt = Math.max(0, GROUND_Y - this.y), k = Phaser.Math.Clamp(1 - alt / 600, 0.25, 1);
+      this.shadow.fillStyle(0x000000, 0.3 * k);
+      this.shadow.fillEllipse(0, alt + 2, this.formDef.bodyW * 1.4 * k, 12 * k);
+      return;
+    }
     this.shadow.fillStyle(0x000000, this.onGround ? 0.35 : 0.15);
     const w = this.formDef.bodyW * 1.5 * (this.onGround ? 1 : 0.6);
     this.shadow.fillEllipse(0, 2, w, 12);

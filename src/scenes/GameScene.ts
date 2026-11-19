@@ -6,7 +6,7 @@ import { audio } from '../systems/Audio';
 import { Parallax, THEMES } from '../gfx/Parallax';
 import { Player } from '../entities/Player';
 import { Crow, Enemy, EnemyKind, Husk, SpiritWolf } from '../entities/Enemies';
-import { FossilGolem, MooseTitan } from '../entities/Boss';
+import { FossilGolem, MooseTitan, ThunderWyrm } from '../entities/Boss';
 import { Orb, Projectile, ProjKind } from '../entities/Projectile';
 
 export interface GameData { hero: HeroId; difficulty: Difficulty; stage?: number; lives?: number; score?: number }
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
 
     this.controls = new Controls(this);
     this.fx = new Fx(this);
-    audio.play(S.theme === 'canyon' ? 'canyon' : 'forest');
+    audio.play(S.theme === 'canyon' ? 'canyon' : S.theme === 'storm' ? 'storm' : 'forest');
     const L = S.length;
     this.physics.world.setBounds(0, 0, L, GAME_H);
     this.physics.world.resume();
@@ -81,10 +81,11 @@ export class GameScene extends Phaser.Scene {
 
     const platforms = this.physics.add.staticGroup();
     for (const p of S.platforms) {
-      if (S.theme === 'canyon') this.makeRockPlatform(platforms, p.x, p.y, p.w);
+      if (S.theme === 'canyon' || S.theme === 'storm') this.makeRockPlatform(platforms, p.x, p.y, p.w);
       else this.makeLogPlatform(platforms, p.x, p.y, p.w);
     }
     if (S.theme === 'canyon') this.makeFossilDecor();
+    if (S.theme === 'storm') this.makeStorm();
     this.makeArenaDecor();
 
     this.player = new Player(this, 220, GROUND_Y - 1, this.heroId, S.beast);
@@ -125,7 +126,35 @@ export class GameScene extends Phaser.Scene {
     body.checkCollision.down = false; body.checkCollision.left = false; body.checkCollision.right = false;
   }
 
+  /** Rain, wind-blown sleet and periodic lightning over Storm Peak. */
+  private makeStorm() {
+    this.add.particles(0, 0, 'raindrop', {
+      x: { min: -200, max: GAME_W + 300 }, y: -40, lifespan: 900, frequency: 10, quantity: 2,
+      speedY: { min: 950, max: 1150 }, speedX: { min: -260, max: -200 }, rotate: 12,
+      alpha: { start: 0.55, end: 0.2 }, scaleY: { min: 0.8, max: 1.3 },
+    }).setScrollFactor(0).setDepth(36);
+    const flash = this.add.rectangle(0, 0, GAME_W, GAME_H, 0xdfe8ff, 0).setOrigin(0).setScrollFactor(0).setDepth(-58);
+    const bolt = this.add.graphics().setScrollFactor(0).setDepth(-59);
+    const strike = () => {
+      if (this.ended) return;
+      // forked bolt in the far sky
+      const x0 = Phaser.Math.Between(100, GAME_W - 100);
+      bolt.clear().lineStyle(3, 0xeef3ff, 1);
+      let x = x0, y = 0;
+      bolt.beginPath(); bolt.moveTo(x, y);
+      while (y < 380) { x += Phaser.Math.Between(-40, 40); y += Phaser.Math.Between(25, 55); bolt.lineTo(x, y); }
+      bolt.strokePath(); bolt.setAlpha(1);
+      this.tweens.add({ targets: bolt, alpha: 0, duration: 260 });
+      flash.setAlpha(0.55);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 420, ease: 'Quad.easeOut' });
+      this.time.delayedCall(Phaser.Math.Between(250, 900), () => audio.sfx('thunder'));
+      this.time.delayedCall(Phaser.Math.Between(4500, 9000), strike);
+    };
+    this.time.delayedCall(2500, strike);
+  }
+
   private makeRockPlatform(group: Phaser.Physics.Arcade.StaticGroup, x: number, y: number, w: number) {
+    if (this.stage.theme === 'storm') return this.makeCragPlatform(group, x, y, w);
     const g = this.add.graphics().setDepth(-4);
     g.fillStyle(0x000000, 0.25); g.fillEllipse(x, GROUND_Y + 4, w * 0.9, 14);
     // sandstone pillar + slab
@@ -185,8 +214,29 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.pause();
   }
 
+  /** Snow-capped granite ledge on a thin rock spire (Storm Peak). */
+  private makeCragPlatform(group: Phaser.Physics.Arcade.StaticGroup, x: number, y: number, w: number) {
+    const g = this.add.graphics().setDepth(-4);
+    g.fillStyle(0x000000, 0.25); g.fillEllipse(x, GROUND_Y + 4, w * 0.9, 14);
+    g.fillStyle(0x232a38, 1);
+    g.fillTriangle(x - w * 0.22, GROUND_Y, x + w * 0.22, GROUND_Y, x, y + 10);
+    g.fillStyle(COLORS.outline, 1); g.fillRoundedRect(x - w / 2 - 3, y - 3, w + 6, 30, 8);
+    g.fillStyle(0x4a5468, 1); g.fillRoundedRect(x - w / 2, y, w, 24, 7);
+    g.fillStyle(0x2f3747, 1); g.fillRect(x - w / 2 + 12, y + 14, w * 0.45, 3);
+    g.fillStyle(0xdfe7f4, 1); g.fillRoundedRect(x - w / 2 + 2, y - 2, w - 4, 7, 3);
+    const z = this.add.zone(x, y + 6, w, 12);
+    group.add(z);
+    const body = z.body as Phaser.Physics.Arcade.StaticBody;
+    body.checkCollision.down = false; body.checkCollision.left = false; body.checkCollision.right = false;
+  }
+
+  /** Enemy projectile with an explicit velocity (aimed shots). */
+  spawnEnemyShot(kind: ProjKind, x: number, y: number, vx: number, vy: number) {
+    this.projectiles.push(new Projectile(this, kind, x, y, Math.sign(vx) || 1, this.diff.enemyDmg).aim(vx, vy));
+  }
+
   spawnProjectile(kind: ProjKind, x: number, y: number, dir: number) {
-    const enemyKind = kind === 'ewave' || kind === 'spike' || kind === 'shard';
+    const enemyKind = kind === 'ewave' || kind === 'spike' || kind === 'shard' || kind === 'strike' || kind === 'orb';
     const mul = enemyKind ? this.diff.enemyDmg : this.player.hero.dmgMul;
     if (kind === 'spike') this.time.delayedCall(750, () => audio.sfx('crack'));
     this.projectiles.push(new Projectile(this, kind, x, y, dir, mul));
@@ -348,9 +398,11 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('banner', 'WARNING', '#ff4d5e', 80);
     this.time.delayedCall(1800, () => {
       if (this.ended) return;
-      this.boss = this.stage.id === 2
-        ? new FossilGolem(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
-        : new MooseTitan(this, x0 + GAME_W + 220, x0, x0 + GAME_W);
+      this.boss = this.stage.id === 3
+        ? new ThunderWyrm(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
+        : this.stage.id === 2
+          ? new FossilGolem(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
+          : new MooseTitan(this, x0 + GAME_W + 220, x0, x0 + GAME_W);
       this.enemies.push(this.boss);
       this.enemyGroup.add(this.boss);
       this.fx.shake(0.01, 600);
@@ -506,7 +558,8 @@ export class GameScene extends Phaser.Scene {
       if (this.spawnT <= 0 && alive < cap) {
         this.spawnT = (2.7 - progress * 1.1) * this.diff.spawnMul;
         const side: 1 | -1 = Math.random() < 0.75 ? 1 : -1;
-        const kind: EnemyKind = progress > 0.12 && Math.random() < 0.35 ? 'crow' : 'husk';
+        const crowChance = this.stage.theme === 'storm' ? 0.55 : 0.35;
+        const kind: EnemyKind = progress > 0.12 && Math.random() < crowChance ? 'crow' : 'husk';
         this.spawnEnemy(kind, side);
       }
     }

@@ -2,7 +2,7 @@ import Phaser from 'phaser';
 import { DIFFICULTY, Difficulty, FONT_TITLE, FONT_UI, GAME_H, GAME_W, HEROES, HeroId, STAGES } from '../config';
 import { Controls } from '../systems/Controls';
 import { audio } from '../systems/Audio';
-import { makeCanyonTextures, makeForestTextures } from '../gfx/Textures';
+import { makeCanyonTextures, makeForestTextures, makeStormTextures } from '../gfx/Textures';
 import { preloadSprites } from '../gfx/Sprites';
 
 export class BootScene extends Phaser.Scene {
@@ -23,6 +23,7 @@ export class BootScene extends Phaser.Scene {
   create() {
     makeForestTextures(this);
     makeCanyonTextures(this);
+    makeStormTextures(this);
     this.scene.start('Menu');
   }
 }

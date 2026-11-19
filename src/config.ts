@@ -76,10 +76,10 @@ export type BeastId = 'bigfoot' | 'raptor' | 'dragon';
 export const BEASTS: Record<BeastId, { bodyW: number; bodyH: number; speed: number; jump: number }> = {
   bigfoot: { bodyW: 92, bodyH: 215, speed: 0.88, jump: 0.92 },
   raptor: { bodyW: 116, bodyH: 120, speed: 1.4, jump: 1.15 },
-  dragon: { bodyW: 140, bodyH: 140, speed: 1.2, jump: 1.2 },
+  dragon: { bodyW: 150, bodyH: 100, speed: 1.3, jump: 1.0 },
 };
 
-export type Theme = 'forest' | 'canyon';
+export type Theme = 'forest' | 'canyon' | 'storm';
 
 export interface StageDef {
   id: number;
@@ -115,7 +115,14 @@ export const STAGES: StageDef[] = [
       { x: 3100, y: 500, w: 260 }, { x: 4050, y: 450, w: 180 }, { x: 4350, y: 360, w: 150 }, { x: 5100, y: 500, w: 220 },
     ],
   },
-  { id: 3, name: 'Storm Peak', beast: 'dragon', beastName: 'STORM DRAGON', boss: 'THUNDER WYRM', bossTitle: 'Serpent of the Squall', implemented: false, ...NONE },
+  {
+    id: 3, name: 'Storm Peak', beast: 'dragon', beastName: 'STORM DRAGON', boss: 'THUNDER WYRM', bossTitle: 'Serpent of the Squall', implemented: true,
+    theme: 'storm', length: 7200, arenaStart: 5920,
+    platforms: [
+      { x: 900, y: 500, w: 180 }, { x: 1500, y: 430, w: 160 }, { x: 2300, y: 500, w: 220 }, { x: 2900, y: 400, w: 150 },
+      { x: 3600, y: 480, w: 200 }, { x: 4300, y: 420, w: 170 }, { x: 5000, y: 500, w: 220 },
+    ],
+  },
   { id: 4, name: 'Ember Mill', beast: 'bigfoot', beastName: 'ELDER BIGFOOT', boss: 'SAWMILL BEHEMOTH', bossTitle: 'Iron and Rot', implemented: false, ...NONE },
   { id: 5, name: 'Tar Pit Bayou', beast: 'raptor', beastName: 'ALPHA RAPTOR', boss: 'TAR LEVIATHAN', bossTitle: 'The Sunken Maw', implemented: false, ...NONE },
   { id: 6, name: 'The Hollow Rift', beast: 'dragon', beastName: 'ELDER DRAGON', boss: 'THE HOLLOW HEART', bossTitle: 'Star-Fallen Corruption', implemented: false, ...NONE },

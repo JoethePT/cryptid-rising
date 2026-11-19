@@ -42,7 +42,7 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 |---|---|---|---|---|
 | 1 | Old-Growth Forest | Bigfoot | Moose Titan | **playable** |
 | 2 | Fossil Canyon | Velociraptor | Fossil Golem | **playable** (golem roar/lunge art pending, falls back to walk pose) |
-| 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | planned |
+| 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | **playable** (dragon uses a preview-res sprite; wyrm uses a drawn fallback until its art exports) |
 | 4 | Ember Mill | Elder Bigfoot | Sawmill Behemoth | planned |
 | 5 | Tar Pit Bayou | Alpha Raptor | Tar Leviathan | planned |
 | 6 | The Hollow Rift | Elder Dragon | The Hollow Heart | planned |
@@ -61,6 +61,7 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 Human moves: punch, kick, crouch punch, sweep kick (crouch + kick), one air kick per jump, and dash (with i-frames).
 Crouching ducks under Husk swipes.
 Velociraptor moves: **Claw Slash** (J), fast and chainable. **Pounce** (K), a leaping strike that also hits in the air. **Sprint** (dash), very fast and damaging. Fossil Golem: lunge bite, bone spikes from the ground (glow first), shard rain (watch the shadows), summons at 55% and 25% HP.
+Storm Dragon moves: **free flight** (W/Space up, S down). **Claw** (J). **Lightning Breath** (K), a piercing bolt. **Dive** (dash), which goes up or down if you hold those directions. Thunder Wyrm: lightning columns (they flicker first), aimed storm orbs, side sweeps at your height, and swoops that end resting low, which is the window for fighters on foot. It summons crows at 55% and 25% HP.
 Bigfoot moves: **Ground Pound** (J), which hits up close and sends shockwaves both ways. **Log Throw** (K), an arcing projectile. **Shoulder Charge** (dash), which damages enemies.
 
 ## Audio

@@ -14,6 +14,11 @@ export const THEMES: Record<Theme, { sky: string; layers: [string, number, numbe
     layers: [['cy-mesas', 0.1], ['cy-spires', 0.25], ['cy-dust', 0.4, 0.9], ['cy-near', 0.55]],
     ground: 'cy-ground', fg: 'cy-fg', motes: 0xffc58a,
   },
+  storm: {
+    sky: 'st-sky',
+    layers: [['st-peaks', 0.08], ['st-clouds', 0.2], ['st-mist', 0.4, 0.9], ['st-near', 0.55]],
+    ground: 'st-ground', fg: 'st-fg', motes: 0xbfd4ff,
+  },
 };
 
 /** Screen-fixed tile-sprite layers that scroll at a fraction of the camera. */

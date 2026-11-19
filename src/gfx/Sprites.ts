@@ -20,11 +20,15 @@ export const SPRITES: Record<string, SpriteDef> = {
   // Velociraptor (stage 2 beast)
   'raptor-idle': { h: 150, ax: 0.55 }, 'raptor-run': { h: 118, ax: 0.5 }, 'raptor-slash': { h: 150, ax: 0.5 },
   'raptor-pounce': { h: 132, ax: 0.5, fallback: 'raptor-run' }, 'raptor-roar': { h: 210, ax: 0.5, fallback: 'raptor-slash' },
+  // Storm Dragon (stage 3 beast, flies)
+  'dragon-hover': { h: 150, ax: 0.58 }, 'dragon-glide': { h: 120, ax: 0.5, fallback: 'dragon-hover' },
+  'dragon-claw': { h: 150, ax: 0.5, fallback: 'dragon-hover' }, 'dragon-breath': { h: 150, ax: 0.5, fallback: 'dragon-hover' },
   // Enemies
   'husk-walk': { h: 150, ax: 0.5 }, 'husk-windup': { h: 162, ax: 0.5 }, 'husk-swipe': { h: 146, ax: 0.45 },
   'crow-fly': { h: 92, ax: 0.5 }, 'crow-swoop': { h: 84, ax: 0.5 },
   'wolf-run': { h: 104, ax: 0.5 }, 'wolf-lunge': { h: 110, ax: 0.5 },
   'moose-walk': { h: 330, ax: 0.5 }, 'moose-charge': { h: 290, ax: 0.5 },
+  'wyrm-fly': { h: 230, ax: 0.5 }, 'wyrm-strike': { h: 250, ax: 0.5, fallback: 'wyrm-fly' },
   'golem-walk': { h: 320, ax: 0.5 }, 'golem-roar': { h: 360, ax: 0.5, fallback: 'golem-walk' }, 'golem-lunge': { h: 270, ax: 0.5, fallback: 'golem-walk' },
 };
 
