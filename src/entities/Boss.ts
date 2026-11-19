@@ -59,7 +59,7 @@ export class MooseTitan extends Enemy {
         this.mode = dist > 360 ? 'walk' : 'idle';
         if (this.modeT <= 0) {
           const pending = this.summons.length && this.hp < this.maxHp * this.summons[0];
-          if (pending) { this.summons.shift(); this.set('summon', 1.1); audio.sfx('roar'); b.setVelocityX(0); this.gs.events.emit('banner', 'THE TITAN BELLOWS!', '#d68bff', 40); }
+          if (pending) { this.summons.shift(); this.set('summon', 1.1); audio.sfx('moose'); b.setVelocityX(0); this.gs.events.emit('banner', 'THE TITAN BELLOWS!', '#d68bff', 40); }
           else if (Math.random() < (dist > 320 ? 0.65 : 0.4)) { this.set('windup', this.enraged ? 0.55 : 0.8); b.setVelocityX(0); }
           else { this.set('rear', 0.7); this.slammed = false; b.setVelocityX(0); }
         }
@@ -211,7 +211,7 @@ export class FossilGolem extends Enemy {
         if (this.modeT <= 0) {
           b.setVelocityX(0);
           if (this.summons.length && this.hp < this.maxHp * this.summons[0]) {
-            this.summons.shift(); this.set('summon', 1.1); audio.sfx('roar');
+            this.summons.shift(); this.set('summon', 1.1); audio.sfx('golem');
             this.gs.events.emit('banner', 'THE BONES STIR!', '#d68bff', 40);
           } else {
             const r = Math.random();
@@ -252,7 +252,7 @@ export class FossilGolem extends Enemy {
         b.setVelocityX(0);
         if (!this.didAct && this.modeT < this.modeLen - 0.4) {
           this.didAct = true;
-          audio.sfx('roar');
+          audio.sfx('golem');
           this.gs.fx.shake(0.01, 500);
           const n = this.enraged ? 9 : 6;
           for (let i = 0; i < n; i++) {
@@ -356,7 +356,7 @@ export class ThunderWyrm extends Enemy {
     switch (this.mode) {
       case 'enter':
         this.flyTo(this.arenaR - 300, 260, 2);
-        if (Math.abs(this.x - (this.arenaR - 300)) < 30) { audio.sfx('roar'); this.set('hover', 1.2); }
+        if (Math.abs(this.x - (this.arenaR - 300)) < 30) { audio.sfx('wyrm'); this.set('hover', 1.2); }
         break;
       case 'hover': {
         const tx = Phaser.Math.Clamp(p.x + this.side * 280, L, R);
@@ -364,7 +364,7 @@ export class ThunderWyrm extends Enemy {
         this.faceToward(p.x);
         if (this.modeT <= 0) {
           if (this.summons.length && this.hp < this.maxHp * this.summons[0]) {
-            this.summons.shift(); this.set('summon', 1.1); audio.sfx('roar');
+            this.summons.shift(); this.set('summon', 1.1); audio.sfx('wyrm');
             this.gs.events.emit('banner', 'THE SKY SCREAMS!', '#d68bff', 40);
             break;
           }
@@ -414,7 +414,7 @@ export class ThunderWyrm extends Enemy {
         this.targetY = Phaser.Math.Clamp(p.centerY(), 260, 560);
         this.flyTo(tx, this.targetY, 3);
         this.facing = this.side > 0 ? -1 : 1;
-        if (this.modeT <= 0) { this.set('sweep', 2.2); this.contactDmg = 18; audio.sfx('roar'); }
+        if (this.modeT <= 0) { this.set('sweep', 2.2); this.contactDmg = 18; audio.sfx('wyrm'); }
         break;
       }
       case 'sweep': {

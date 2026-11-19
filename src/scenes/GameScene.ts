@@ -62,6 +62,8 @@ export class GameScene extends Phaser.Scene {
     this.controls = new Controls(this);
     this.fx = new Fx(this);
     audio.play(S.theme === 'canyon' ? 'canyon' : S.theme === 'storm' ? 'storm' : 'forest');
+    audio.ambience(S.theme);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.ambience(null));
     const L = S.length;
     this.physics.world.setBounds(0, 0, L, GAME_H);
     this.physics.world.resume();
@@ -207,6 +209,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /** Each boss has its own voice. */
+  bossVoice() {
+    return this.stage.id === 3 ? 'wyrm' : this.stage.id === 2 ? 'golem' : 'moose';
+  }
+
   // ------------------------------------------------------------------ API used by entities
 
   hitstop(ms: number) {
@@ -295,7 +302,7 @@ export class GameScene extends Phaser.Scene {
 
   onEnemyKilled(e: Enemy) {
     this.stats.kills++;
-    audio.sfx('poof');
+    audio.sfx(e instanceof Husk ? 'huskdie' : 'poof');
     this.score += Math.round(e.score * (1 + this.combo * 0.1));
     this.fx.wisps(e.x, e.y - 50, e.carrier ? COLORS.spirit : COLORS.hollow, e.isBoss ? 40 : 10);
     if (e.carrier) this.orbs.push(new Orb(this, e.x, e.y - 60));
@@ -347,7 +354,7 @@ export class GameScene extends Phaser.Scene {
 
     // Full beast transformation
     audio.sfx('powerup');
-    this.time.delayedCall(1150, () => audio.sfx('transform'));
+    this.time.delayedCall(1150, () => { audio.sfx('transform'); audio.sfx(this.stage.beast); });
     cam.zoomTo(1.3, 450, 'Sine.easeInOut');
     let n = 0;
     this.time.addEvent({
@@ -407,7 +414,7 @@ export class GameScene extends Phaser.Scene {
       this.enemyGroup.add(this.boss);
       this.fx.shake(0.01, 600);
       audio.play('boss');
-      audio.sfx('roar');
+      audio.sfx(this.bossVoice());
       this.events.emit('boss', this.stage.boss, this.stage.bossTitle);
     });
   }
@@ -415,7 +422,7 @@ export class GameScene extends Phaser.Scene {
   private stageClear(boss: Enemy) {
     this.ended = true;
     audio.stopMusic();
-    audio.sfx('roar');
+    audio.sfx(this.bossVoice());
     this.time.delayedCall(1000, () => audio.play('clear'));
     this.hitstop(450);
     const cam = this.cameras.main;

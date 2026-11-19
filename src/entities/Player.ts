@@ -102,6 +102,7 @@ export class Player extends Phaser.GameObjects.Container {
   get isRaptor() { return this.isBeast && this.beast === 'raptor'; }
   get isDragon() { return this.isBeast && this.beast === 'dragon'; }
   private diveVy = 0;
+  private stepT = 0;
   get isBeast() { return this.form === 3; }
   get alive() { return this.state !== 'dead'; }
 
@@ -246,6 +247,11 @@ export class Player extends Phaser.GameObjects.Container {
     if (!this.atk) this.setCrouch(this.onGround && c.isDown('down') && !this.isBeast);
 
     const speed = this.hero.speed * this.formDef.speed * (this.isBeast ? BEASTS[this.beast].speed : 1);
+    // heavy Bigfoot footfalls
+    if (this.isBeast && this.beast === 'bigfoot' && this.onGround && Math.abs(b.velocity.x) > 20) {
+      this.stepT -= dt;
+      if (this.stepT <= 0) { this.stepT = 0.36; audio.sfx('step'); }
+    }
     const groundAttack = !!this.atk && this.atk.def.kind !== 'airkick' && this.atk.def.kind !== 'pounce';
     if (this.atk?.def.kind === 'pounce' && this.atk.fired) {
       // momentum carries the leap

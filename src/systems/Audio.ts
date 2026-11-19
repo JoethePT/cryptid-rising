@@ -4,7 +4,23 @@
 
 type SfxName =
   | 'swing' | 'hit' | 'heavy' | 'hurt' | 'jump' | 'orb' | 'powerup' | 'transform' | 'slam' | 'throw'
-  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce' | 'zap' | 'thunder';
+  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce' | 'zap' | 'thunder'
+  // creature voices
+  | 'bigfoot' | 'raptor' | 'dragon' | 'moose' | 'golem' | 'wyrm' | 'growl' | 'huskdie' | 'howl' | 'snarl' | 'step';
+
+export type Ambience = 'forest' | 'canyon' | 'storm';
+
+interface VoiceOpts {
+  type?: OscillatorType;
+  pitch: [number, number][]; // [time offset, Hz] breakpoints
+  dur: number;
+  vol: number;
+  growl?: number; // LFO rate (Hz) for a rough, rattling throat
+  growlDepth?: number; // fraction of pitch
+  formants: [number, number][]; // [centre Hz, Q] — gives the vowel/throat character
+  breath?: number; // noise mixed in
+  echo?: boolean;
+}
 
 export type SongName = 'title' | 'forest' | 'canyon' | 'storm' | 'boss' | 'clear' | 'gameover';
 
@@ -162,6 +178,8 @@ class AudioEngine {
   private timer?: number;
   private leadTokens: string[] = [];
   private ducked = false;
+  private ambBus?: GainNode;
+  private ambNodes: AudioScheduledSourceNode[] = [];
   muted = false;
 
   constructor() {
@@ -199,6 +217,7 @@ class AudioEngine {
     }
     if (this.ctx.state === 'suspended') this.ctx.resume();
     if (this.pendingSong) { const s = this.pendingSong; this.pendingSong = undefined; this.play(s); }
+    if (this.pendingAmb) { const a = this.pendingAmb; this.pendingAmb = undefined; this.ambience(a); }
   }
 
   toggleMute() {
@@ -367,12 +386,159 @@ class AudioEngine {
     this.noise(t, 0.045, vol * 2.5, 'highpass', 7500, this.musicBus);
   }
 
+  // ---------------------------------------------------------------- creature voices
+
+  /** Formant-filtered growling oscillator: the building block for every creature voice. */
+  private voice(t: number, o: VoiceOpts) {
+    const ctx = this.ctx!;
+    const osc = ctx.createOscillator();
+    osc.type = o.type ?? 'sawtooth';
+    osc.frequency.setValueAtTime(o.pitch[0][1], t);
+    for (const [dt, f] of o.pitch.slice(1)) osc.frequency.exponentialRampToValueAtTime(f, t + dt);
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, t);
+    amp.gain.exponentialRampToValueAtTime(o.vol, t + Math.min(0.12, o.dur * 0.2));
+    amp.gain.setValueAtTime(o.vol, t + o.dur * 0.6);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+    if (o.growl) {
+      // amplitude + pitch roughness
+      const lfo = ctx.createOscillator(), lg = ctx.createGain(), trem = ctx.createGain();
+      lfo.type = 'square'; lfo.frequency.value = o.growl;
+      lg.gain.value = o.pitch[0][1] * (o.growlDepth ?? 0.15);
+      lfo.connect(lg).connect(osc.frequency);
+      trem.gain.value = o.vol * 0.45; lfo.connect(trem).connect(amp.gain);
+      lfo.start(t); lfo.stop(t + o.dur + 0.05);
+    }
+    const mix = ctx.createGain(); mix.gain.value = 1;
+    for (const [f, q] of o.formants) {
+      const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f; bp.Q.value = q;
+      osc.connect(bp).connect(mix);
+    }
+    mix.connect(amp).connect(this.sfxBus);
+    if (o.echo) amp.connect(this.echo);
+    osc.start(t); osc.stop(t + o.dur + 0.05);
+    if (o.breath) {
+      const { f, g } = this.noise(t, o.dur, o.breath, 'bandpass', o.formants[0][0] * 1.5, this.sfxBus, 0.8);
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.breath, t + 0.1); g.gain.exponentialRampToValueAtTime(0.0001, t + o.dur);
+      void f;
+    }
+  }
+
+  private creature(name: SfxName, t: number) {
+    const v = (o: VoiceOpts, at = t) => this.voice(at, o);
+    switch (name) {
+      case 'bigfoot':
+        // two chest thumps, then a deep throaty bellow
+        [0, 0.18].forEach((d) => this.thump(t + d, 90, 0.7));
+        v({ pitch: [[0, 120], [0.5, 105], [1.5, 70]], dur: 1.6, vol: 0.55, growl: 26, growlDepth: 0.2, formants: [[380, 3], [750, 4]], breath: 0.25 }, t + 0.35);
+        break;
+      case 'raptor':
+        // shrill, rattling screech
+        v({ pitch: [[0, 700], [0.15, 1500], [0.5, 1200], [0.9, 650]], dur: 0.95, vol: 0.32, growl: 42, growlDepth: 0.08, formants: [[2400, 5], [3600, 6]], breath: 0.15 });
+        v({ type: 'square', pitch: [[0, 1400], [0.6, 900]], dur: 0.6, vol: 0.06, formants: [[3000, 3]] }, t + 0.05);
+        break;
+      case 'dragon':
+        v({ pitch: [[0, 170], [0.4, 150], [1.6, 85]], dur: 1.7, vol: 0.5, growl: 19, growlDepth: 0.18, formants: [[500, 2.5], [1250, 4]], breath: 0.3, echo: true });
+        this.sfx('zap');
+        break;
+      case 'moose':
+        // nasal rising-then-falling bellow
+        v({ pitch: [[0, 150], [0.5, 250], [1.1, 230], [1.7, 120]], dur: 1.8, vol: 0.45, growl: 8, growlDepth: 0.04, formants: [[650, 6], [1050, 8], [2200, 6]], breath: 0.12, echo: true });
+        break;
+      case 'golem': {
+        v({ pitch: [[0, 95], [1.2, 60]], dur: 1.3, vol: 0.45, growl: 22, growlDepth: 0.25, formants: [[300, 2], [900, 3]], breath: 0.2 });
+        // bone rattle: a burst of dry clicks
+        for (let i = 0; i < 18; i++) this.noise(t + 0.1 + i * 0.05 + Math.random() * 0.02, 0.03, 0.35, 'bandpass', 2600 + Math.random() * 1500, this.sfxBus, 4);
+        break;
+      }
+      case 'wyrm':
+        // long serpent hiss under a crackling screech
+        this.noise(t, 1.3, 0.3, 'bandpass', 5200, this.sfxBus, 1.5);
+        v({ type: 'square', pitch: [[0, 520], [0.4, 980], [1.2, 420]], dur: 1.25, vol: 0.18, growl: 33, growlDepth: 0.1, formants: [[1600, 4], [2900, 5]], echo: true });
+        break;
+      case 'growl':
+        v({ pitch: [[0, 120], [0.5, 95]], dur: 0.55, vol: 0.28, growl: 30, growlDepth: 0.2, formants: [[320, 3], [700, 4]], breath: 0.12 });
+        break;
+      case 'huskdie':
+        v({ pitch: [[0, 420], [0.7, 110]], dur: 0.75, vol: 0.25, growl: 35, growlDepth: 0.12, formants: [[600, 3], [1400, 4]], breath: 0.18 });
+        break;
+      case 'howl':
+        // ghostly rising howl with echo
+        v({ type: 'triangle', pitch: [[0, 380], [0.35, 690], [1.1, 650], [1.6, 470]], dur: 1.7, vol: 0.28, formants: [[700, 2], [1100, 3]], echo: true });
+        v({ type: 'sine', pitch: [[0, 760], [0.35, 1380], [1.6, 940]], dur: 1.6, vol: 0.08, formants: [[1400, 2]], echo: true }, t + 0.02);
+        break;
+      case 'snarl':
+        v({ pitch: [[0, 160], [0.3, 130]], dur: 0.35, vol: 0.3, growl: 48, growlDepth: 0.3, formants: [[500, 3], [1500, 3]], breath: 0.25 });
+        break;
+      case 'step':
+        this.thump(t, 70, 0.35);
+        break;
+    }
+  }
+
+  private thump(t: number, f: number, vol: number) {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(f, t); o.frequency.exponentialRampToValueAtTime(f * 0.45, t + 0.14);
+    g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+    o.connect(g).connect(this.sfxBus); o.start(t); o.stop(t + 0.2);
+    this.noise(t, 0.08, vol * 0.4, 'lowpass', 500, this.sfxBus);
+  }
+
+  // ---------------------------------------------------------------- ambience
+
+  /** Looping background atmosphere for a stage (null = silence). */
+  ambience(name: Ambience | null) {
+    for (const n of this.ambNodes) { try { n.stop(); } catch { /* already stopped */ } }
+    this.ambNodes = [];
+    const ctx = this.ctx;
+    if (!ctx || !name) { this.pendingAmb = name ?? undefined; return; }
+    if (!this.ambBus) { this.ambBus = ctx.createGain(); this.ambBus.gain.value = 0.22; this.ambBus.connect(this.master); }
+    const t = ctx.currentTime;
+    const loopNoise = (type: BiquadFilterType, f: number, q: number, vol: number, wobble: number, rate: number) => {
+      const src = ctx.createBufferSource(); src.buffer = this.noiseBuf; src.loop = true;
+      const filt = ctx.createBiquadFilter(); filt.type = type; filt.frequency.value = f; filt.Q.value = q;
+      const g = ctx.createGain(); g.gain.value = vol;
+      const lfo = ctx.createOscillator(), lg = ctx.createGain();
+      lfo.frequency.value = rate; lg.gain.value = wobble;
+      lfo.connect(lg).connect(filt.frequency);
+      src.connect(filt).connect(g).connect(this.ambBus!);
+      src.start(t); lfo.start(t);
+      this.ambNodes.push(src, lfo);
+      return g;
+    };
+    if (name === 'forest') {
+      loopNoise('lowpass', 500, 0.5, 0.35, 200, 0.07); // soft breeze
+      // crickets: a high tone gated in quick chirps, swelling slowly
+      const o = ctx.createOscillator(), chirp = ctx.createGain(), gate = ctx.createOscillator(), gg = ctx.createGain(), swell = ctx.createOscillator(), sg = ctx.createGain();
+      o.frequency.value = 4400; chirp.gain.value = 0;
+      gate.type = 'square'; gate.frequency.value = 28; gg.gain.value = 0.03;
+      swell.frequency.value = 0.6; sg.gain.value = 0.03;
+      gate.connect(gg).connect(chirp.gain); swell.connect(sg).connect(chirp.gain);
+      o.connect(chirp).connect(this.ambBus);
+      o.start(t); gate.start(t); swell.start(t);
+      this.ambNodes.push(o, gate, swell);
+    } else if (name === 'canyon') {
+      loopNoise('bandpass', 700, 1.2, 0.6, 400, 0.11); // desert wind gusts
+      loopNoise('highpass', 5000, 0.5, 0.08, 1500, 0.05); // blowing sand
+    } else if (name === 'storm') {
+      loopNoise('highpass', 2500, 0.4, 0.45, 300, 0.2); // rain
+      loopNoise('bandpass', 450, 1.5, 0.7, 300, 0.13); // howling wind
+    }
+  }
+
+  private pendingAmb?: Ambience;
+
   // ---------------------------------------------------------------- sfx
 
   sfx(name: SfxName) {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const t = ctx.currentTime + 0.005, out = this.sfxBus;
+    if (['bigfoot', 'raptor', 'dragon', 'moose', 'golem', 'wyrm', 'growl', 'huskdie', 'howl', 'snarl', 'step'].includes(name)) {
+      this.creature(name, t);
+      return;
+    }
     const tone = (type: OscillatorType, f0: number, f1: number, dur: number, vol: number, at = t) => {
       const o = ctx.createOscillator(), g = ctx.createGain();
       o.type = type; o.frequency.setValueAtTime(f0, at); o.frequency.exponentialRampToValueAtTime(Math.max(20, f1), at + dur);

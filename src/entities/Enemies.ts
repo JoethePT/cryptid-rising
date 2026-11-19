@@ -159,6 +159,7 @@ export class Husk extends Enemy {
         this.body.setVelocityX(dist > 60 && p.alive ? this.facing * this.speed : 0);
         if (p.alive && dist < 90 && Math.abs(p.y - this.y) < 90 && this.cd <= 0) {
           this.mode = 'windup'; this.modeT = 0.45; this.body.setVelocityX(0);
+          if (Math.random() < 0.6) audio.sfx('growl');
         }
         break;
       case 'windup':
@@ -302,6 +303,7 @@ export class SpiritWolf extends Enemy {
     this.facing = dir;
     this.score = 300;
     this.useSprites(['wolf-run', 'wolf-lunge'], COLORS.spirit, 3);
+    audio.sfx('howl'); // announces the orb carrier
   }
 
   protected think(dt: number) {
@@ -318,6 +320,7 @@ export class SpiritWolf extends Enemy {
     this.body.setVelocityX(this.facing * 250);
     if (this.lungeCd <= 0 && Math.abs(dx) < 170 && Math.sign(dx) === this.facing && p.alive && this.onGround) {
       this.lunging = true; this.lungeCd = 1.8; this.contactDmg = 10;
+      audio.sfx('snarl');
       this.body.setVelocity(this.facing * 430, -430);
     }
   }
