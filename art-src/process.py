@@ -14,7 +14,7 @@ from scipy import ndimage
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(ROOT, '..', 'public', 'sprites')
-OUT_DIR = 'a2'  # keep in sync with SPRITE_DIR in src/gfx/Sprites.ts
+OUT_DIR = 'a3'  # keep in sync with SPRITE_DIR in src/gfx/Sprites.ts
 SPRITE_H = 440  # max output height in px (game draws them smaller; keeps detail on big screens)
 
 

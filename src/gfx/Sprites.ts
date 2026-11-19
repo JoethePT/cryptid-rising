@@ -33,7 +33,7 @@ export const SPRITES: Record<string, SpriteDef> = {
 };
 
 /** Bump the folder name (and art-src/process.py OUT_DIR) whenever sprites change, so browsers never reuse stale images. */
-export const SPRITE_DIR = 'sprites/a2';
+export const SPRITE_DIR = 'sprites/a3';
 
 type Manifest = Record<string, { w: number; h: number; ax: number }>;
 const MAN = manifest as Manifest;

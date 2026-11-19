@@ -8,7 +8,7 @@ names = sys.argv[2:]
 Z = 2  # preview zoom
 ims = []
 for n in names:
-    im = Image.open(f'public/sprites/a2/{n}.png'); s = H[n] * Z / im.height
+    im = Image.open(f'public/sprites/a3/{n}.png'); s = H[n] * Z / im.height
     ims.append((n, im.resize((max(1, int(im.width * s)), int(im.height * s)), Image.LANCZOS), man[n]['ax']))
 W = sum(i.width for _, i, _ in ims) + 60 * len(ims) + 40
 base = max(i.height for _, i, _ in ims) + 40
