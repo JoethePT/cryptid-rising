@@ -874,10 +874,11 @@ export class TarLeviathan extends Enemy {
 
   hurtRect() {
     // the risen neck and head; the hitbox shrinks as it sinks, and reaches further during a lunge
-    const h = 240 * Math.max(0.15, this.rise);
+    const painted = !!this.spr;
+    const h = (painted ? 340 : 240) * Math.max(0.15, this.rise);
     const reach = this.mode === 'lunge' ? 170 : 0;
-    const w = 200 + reach;
-    const x = this.facing > 0 ? this.x - 100 : this.x + 100 - w;
+    const back = painted ? 80 : 100, w = (painted ? 320 : 200) + reach;
+    const x = this.facing > 0 ? this.x - back : this.x + back - w;
     return new Phaser.Geom.Rectangle(x, this.y - h, w, h);
   }
 
@@ -894,7 +895,7 @@ export class TarLeviathan extends Enemy {
       this.g.fillStyle(COLORS.hollow, 0.25 + 0.15 * Math.sin(t * 5)); this.g.fillEllipse(-poolW * 0.15, -2, poolW * 0.4, 6);
     };
     if (this.spr) {
-      pool();
+      if (this.rise < 0.5) pool(); // the painted art brings its own pool
       const key = this.mode === 'lunge' || this.mode === 'lungeWind' || this.mode === 'erupt' ? 'leviathan-lunge' : 'leviathan-rise';
       this.pose(key, { scale: s, dy: sink, dx: this.mode === 'lunge' ? 40 : this.mode === 'lungeWind' ? -20 * p : 0, rot: this.mode === 'spit' ? -0.06 : 0 });
       this.spr.setAlpha(this.rise < 0.1 ? 0 : 1);
