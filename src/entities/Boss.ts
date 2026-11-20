@@ -1117,7 +1117,11 @@ export class HollowHeart extends Enemy {
     const charging = (this.mode === 'burst' || this.mode === 'beam') && !this.didAct ? 1 : this.mode === 'burst' && p < 0.5 ? 1 - p * 2 : 0;
     this.g.clear();
     if (this.spr) {
-      this.pose(this.mode === 'burst' || this.mode === 'beam' || this.mode === 'summon' ? 'heart-open' : 'heart-idle', { scale: s, dy: 120, rot: Math.sin(t * 0.8) * 0.04 });
+      const opening = this.mode === 'burst' || this.mode === 'beam' || this.mode === 'summon';
+      // sprites hang from their bottom edge: push down by half the height to centre on the body
+      this.pose(opening ? 'heart-open' : 'heart-idle', { scale: s, dy: 175 * s, rot: Math.sin(t * 0.8) * 0.04, sx: 1 + charging * 0.04 });
+      // a pulsing core glow over the art
+      this.g.fillStyle(this.enraged ? 0xff5ad0 : COLORS.hollow, 0.06 + pump * 0.14 + charging * 0.14).fillCircle(0, -10, 60 + pump * 20);
     } else {
       drawHeart(this.g, t, { pump, charge: charging, flash: this.flashT > 0, enraged: this.enraged, scale: s });
     }
