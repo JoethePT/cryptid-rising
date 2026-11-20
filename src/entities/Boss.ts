@@ -891,7 +891,6 @@ export class TarLeviathan extends Enemy {
     const poolW = this.mode === 'hunt' ? 120 : 300;
     const pool = () => {
       this.g.fillStyle(0x07040a, 1); this.g.fillEllipse(0, 6, poolW, 34);
-      this.g.fillStyle(0x07040a, 1); this.g.fillRect(-poolW / 2 + 10, 6, poolW - 20, 60);
       this.g.fillStyle(COLORS.hollow, 0.25 + 0.15 * Math.sin(t * 5)); this.g.fillEllipse(-poolW * 0.15, -2, poolW * 0.4, 6);
     };
     if (this.spr) {
@@ -926,7 +925,7 @@ function drawLeviathan(g: Phaser.GameObjects.Graphics, t: number, rise: number, 
   for (let i = 0; i <= 12; i++) {
     const k = i / 12;
     const x = -50 + (hx + 10) * k * k + Math.sin(t * 2 + k * 3) * 6 * (1 - k);
-    const y = hy * Math.sin(k * Math.PI / 2) + 4;
+    const y = (hy + 30) * Math.sin(k * Math.PI / 2) - 30;
     const r = 52 - k * 18;
     g.fillStyle(O, 1); g.fillCircle(x, y, r + 4);
     g.fillStyle(i % 2 ? tar : tarL, 1); g.fillCircle(x, y, r);

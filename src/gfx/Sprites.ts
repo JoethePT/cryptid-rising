@@ -24,7 +24,7 @@ export const SPRITES: Record<string, SpriteDef> = {
   'raptor-idle': { h: 150, ax: 0.55 }, 'raptor-run': { h: 118, ax: 0.5 }, 'raptor-slash': { h: 150, ax: 0.5 },
   'raptor-pounce': { h: 132, ax: 0.5, fallback: 'raptor-run' }, 'raptor-roar': { h: 210, ax: 0.5, fallback: 'raptor-slash' },
   // Stage 5 beast: the Alpha Raptor (bigger). Until alpha-run exists the game keeps the red-tinted raptor art.
-  'alpha-idle': { h: 168, ax: 0.62 }, 'alpha-run': { h: 132, ax: 0.5 }, 'alpha-slash': { h: 168, ax: 0.5, fallback: 'alpha-idle' },
+  'alpha-idle': { h: 168, ax: 0.62 }, 'alpha-run': { h: 128, ax: 0.62 }, 'alpha-slash': { h: 168, ax: 0.5, fallback: 'alpha-idle' },
   'alpha-pounce': { h: 148, ax: 0.5, fallback: 'alpha-run' }, 'alpha-roar': { h: 200, ax: 0.5, fallback: 'alpha-idle' },
   // Storm Dragon (stage 3 beast, flies)
   'dragon-hover': { h: 150, ax: 0.58 }, 'dragon-glide': { h: 125, ax: 0.55, fallback: 'dragon-hover' },
