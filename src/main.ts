@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { GAME_H, GAME_W, GRAVITY } from './config';
-import { BootScene, PauseScene, ResultScene } from './scenes/MiscScenes';
+import { BootScene, EndingScene, PauseScene, ResultScene } from './scenes/MiscScenes';
 import { MenuScene } from './scenes/MenuScene';
 import { GameScene } from './scenes/GameScene';
 import { HudScene } from './scenes/HudScene';
@@ -19,7 +19,7 @@ const config: Phaser.Types.Core.GameConfig = {
   scale: { mode: Phaser.Scale.FIT, autoCenter: Phaser.Scale.CENTER_BOTH },
   physics: { default: 'arcade', arcade: { gravity: { x: 0, y: GRAVITY }, debug } },
   input: { gamepad: true },
-  scene: [BootScene, MenuScene, GameScene, HudScene, PauseScene, ResultScene, TouchScene],
+  scene: [BootScene, MenuScene, GameScene, HudScene, PauseScene, ResultScene, EndingScene, TouchScene],
 };
 
 async function boot() {

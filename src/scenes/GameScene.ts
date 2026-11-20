@@ -6,8 +6,8 @@ import { audio } from '../systems/Audio';
 import { Parallax, THEMES } from '../gfx/Parallax';
 import { Player } from '../entities/Player';
 import { Crow, Enemy, EnemyKind, Husk, SpiritWolf } from '../entities/Enemies';
-import { FossilGolem, MooseTitan, SawmillBehemoth, ThunderWyrm } from '../entities/Boss';
-import { Orb, Projectile, ProjKind } from '../entities/Projectile';
+import { FossilGolem, HollowHeart, MooseTitan, SawmillBehemoth, TarLeviathan, ThunderWyrm } from '../entities/Boss';
+import { ENEMY_KINDS, Orb, Projectile, ProjKind } from '../entities/Projectile';
 
 export interface GameData { hero: HeroId; difficulty: Difficulty; stage?: number; lives?: number; score?: number }
 
@@ -61,7 +61,7 @@ export class GameScene extends Phaser.Scene {
 
     this.controls = new Controls(this);
     this.fx = new Fx(this);
-    audio.play(S.theme === 'canyon' ? 'canyon' : S.theme === 'storm' ? 'storm' : S.theme === 'mill' ? 'mill' : 'forest');
+    audio.play(S.theme);
     audio.ambience(S.theme);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => audio.ambience(null));
     const L = S.length;
@@ -83,12 +83,16 @@ export class GameScene extends Phaser.Scene {
 
     const platforms = this.physics.add.staticGroup();
     for (const p of S.platforms) {
-      if (S.theme === 'canyon' || S.theme === 'storm') this.makeRockPlatform(platforms, p.x, p.y, p.w);
+      if (S.theme === 'canyon' || S.theme === 'storm' || S.theme === 'rift') this.makeRockPlatform(platforms, p.x, p.y, p.w);
       else this.makeLogPlatform(platforms, p.x, p.y, p.w);
     }
     if (S.theme === 'canyon') this.makeFossilDecor();
     if (S.theme === 'storm') this.makeStorm();
     if (S.theme === 'mill') this.makeEmbers();
+    this.tarPools = [];
+    this.tarG = this.add.graphics().setDepth(-4);
+    for (const t of S.tar ?? []) this.tarPools.push({ x0: t.x - t.w / 2, x1: t.x + t.w / 2, until: Infinity });
+    if (S.theme === 'rift') this.makeRiftPulse();
     this.makeArenaDecor();
 
     this.player = new Player(this, 220, GROUND_Y - 1, this.heroId, S.beast, S.beastArt);
@@ -157,6 +161,55 @@ export class GameScene extends Phaser.Scene {
     this.time.delayedCall(2500, strike);
   }
 
+  /** Sticky tar on the ground (stage pools and boss splashes): 0.5x speed while wading on foot. */
+  private tarPools: { x0: number; x1: number; until: number }[] = [];
+  private tarG!: Phaser.GameObjects.Graphics;
+
+  groundSlow(x: number, onGround: boolean) {
+    if (!onGround) return 1;
+    const now = this.time.now;
+    return this.tarPools.some((p) => x > p.x0 && x < p.x1 && p.until > now) ? 0.5 : 1;
+  }
+
+  private addTarPuddle(x: number) {
+    this.tarPools.push({ x0: x - 70, x1: x + 70, until: this.time.now + 5000 });
+  }
+
+  private drawTar() {
+    const g = this.tarG, now = this.time.now, t = now / 1000;
+    g.clear();
+    this.tarPools = this.tarPools.filter((p) => p.until > now);
+    for (const p of this.tarPools) {
+      const w = p.x1 - p.x0, cx = (p.x0 + p.x1) / 2;
+      const fade = p.until === Infinity ? 1 : Math.min(1, (p.until - now) / 800);
+      g.fillStyle(0x07040a, 0.92 * fade); g.fillEllipse(cx, GROUND_Y + 4, w, 22);
+      g.fillStyle(COLORS.hollow, 0.18 * fade); g.fillEllipse(cx - w * 0.2, GROUND_Y + 1, w * 0.35, 5);
+      // slow bubbles
+      for (let i = 0; i < 3; i++) {
+        const ph = (t * 0.6 + i * 0.33 + cx * 0.001) % 1;
+        g.fillStyle(0x2a1c30, (1 - ph) * fade); g.fillCircle(p.x0 + w * (0.25 + i * 0.25), GROUND_Y - ph * 10, 3 + ph * 4);
+      }
+    }
+  }
+
+  /** The rift in the sky pulses and spits Hollow sparks now and then. */
+  private makeRiftPulse() {
+    const flash = this.add.rectangle(0, 0, GAME_W, GAME_H, COLORS.hollow, 0).setOrigin(0).setScrollFactor(0).setDepth(36).setBlendMode(Phaser.BlendModes.ADD);
+    const pulse = () => {
+      if (!this.scene.isActive()) return;
+      flash.setAlpha(0.18);
+      this.tweens.add({ targets: flash, alpha: 0, duration: 900, ease: 'Quad.easeOut' });
+      audio.sfx('heart');
+      this.time.delayedCall(Phaser.Math.Between(9000, 15000), pulse);
+    };
+    this.time.delayedCall(6000, pulse);
+    this.add.particles(0, 0, 'dot', {
+      x: { min: 0, max: GAME_W }, y: { min: -10, max: 0 }, lifespan: 6000, frequency: 160,
+      speedY: { min: 30, max: 70 }, speedX: { min: -10, max: 10 }, scale: { start: 0.5, end: 0.1 },
+      alpha: { start: 0.9, end: 0 }, tint: COLORS.hollow, blendMode: Phaser.BlendModes.ADD,
+    }).setScrollFactor(0).setDepth(-55);
+  }
+
   /** Embers drifting up from the burning mill, and a warm flicker over the scene. */
   private makeEmbers() {
     this.add.particles(0, 0, 'ember', {
@@ -169,7 +222,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   private makeRockPlatform(group: Phaser.Physics.Arcade.StaticGroup, x: number, y: number, w: number) {
-    if (this.stage.theme === 'storm') return this.makeCragPlatform(group, x, y, w);
+    if (this.stage.theme === 'storm' || this.stage.theme === 'rift') return this.makeCragPlatform(group, x, y, w);
     const g = this.add.graphics().setDepth(-4);
     g.fillStyle(0x000000, 0.25); g.fillEllipse(x, GROUND_Y + 4, w * 0.9, 14);
     // sandstone pillar + slab
@@ -224,7 +277,7 @@ export class GameScene extends Phaser.Scene {
 
   /** Each boss has its own voice. */
   bossVoice() {
-    return this.stage.id === 4 ? 'behemoth' : this.stage.id === 3 ? 'wyrm' : this.stage.id === 2 ? 'golem' : 'moose';
+    return this.stage.id === 6 ? 'heart' : this.stage.id === 5 ? 'leviathan' : this.stage.id === 4 ? 'behemoth' : this.stage.id === 3 ? 'wyrm' : this.stage.id === 2 ? 'golem' : 'moose';
   }
 
   // ------------------------------------------------------------------ API used by entities
@@ -255,11 +308,15 @@ export class GameScene extends Phaser.Scene {
     this.projectiles.push(new Projectile(this, kind, x, y, Math.sign(vx) || 1, this.diff.enemyDmg).aim(vx, vy));
   }
 
-  spawnProjectile(kind: ProjKind, x: number, y: number, dir: number) {
-    const enemyKind = kind === 'ewave' || kind === 'spike' || kind === 'shard' || kind === 'strike' || kind === 'orb' || kind === 'saw' || kind === 'timber';
-    const mul = enemyKind ? this.diff.enemyDmg : this.player.hero.dmgMul;
+  spawnProjectile(kind: ProjKind, x: number, y: number, dir: number, vy?: number) {
+    const mul = ENEMY_KINDS.includes(kind) ? this.diff.enemyDmg : this.player.hero.dmgMul;
     if (kind === 'spike') this.time.delayedCall(750, () => audio.sfx('crack'));
-    this.projectiles.push(new Projectile(this, kind, x, y, dir, mul));
+    if (kind === 'geyser') this.time.delayedCall(780, () => audio.sfx('splash'));
+    if (kind === 'tendril') this.time.delayedCall(780, () => audio.sfx('crack'));
+    if (kind === 'beam') this.time.delayedCall(880, () => audio.sfx('zap'));
+    const pr = new Projectile(this, kind, x, y, dir, mul);
+    if (vy !== undefined) pr.vy = vy;
+    this.projectiles.push(pr);
   }
 
   playerPound(x: number, y: number, elder = false) {
@@ -376,7 +433,7 @@ export class GameScene extends Phaser.Scene {
 
     // Full beast transformation
     audio.sfx('powerup');
-    this.time.delayedCall(1150, () => { audio.sfx('transform'); audio.sfx(this.stage.beastArt === 'elder' ? 'elder' : this.stage.beast); });
+    this.time.delayedCall(1150, () => { audio.sfx('transform'); audio.sfx((this.stage.beastArt ?? this.stage.beast) as 'bigfoot'); });
     cam.zoomTo(1.3, 450, 'Sine.easeInOut');
     let n = 0;
     this.time.addEvent({
@@ -427,7 +484,11 @@ export class GameScene extends Phaser.Scene {
     this.events.emit('banner', 'WARNING', '#ff4d5e', 80);
     this.time.delayedCall(1800, () => {
       if (this.ended) return;
-      this.boss = this.stage.id === 4
+      this.boss = this.stage.id === 6
+        ? new HollowHeart(this, x0 + GAME_W / 2, x0, x0 + GAME_W)
+        : this.stage.id === 5
+        ? new TarLeviathan(this, x0 + GAME_W - 300, x0, x0 + GAME_W)
+        : this.stage.id === 4
         ? new SawmillBehemoth(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
         : this.stage.id === 3
         ? new ThunderWyrm(this, x0 + GAME_W + 260, x0, x0 + GAME_W)
@@ -437,7 +498,7 @@ export class GameScene extends Phaser.Scene {
       this.enemies.push(this.boss);
       this.enemyGroup.add(this.boss);
       this.fx.shake(0.01, 600);
-      audio.play('boss');
+      audio.play(this.stage.id === 6 ? 'heart' : 'boss');
       audio.sfx(this.bossVoice());
       this.events.emit('boss', this.stage.boss, this.stage.bossTitle);
     });
@@ -521,7 +582,9 @@ export class GameScene extends Phaser.Scene {
       if (!e.isBoss && Math.abs(e.x - this.player.x) > 1900) { e.destroy(); return false; }
       return true;
     });
+    for (const pr of this.projectiles) if (pr.dead && pr.landed) { pr.landed = false; this.addTarPuddle(pr.x); }
     this.projectiles = this.projectiles.filter((p) => !p.dead);
+    this.drawTar();
     this.orbs = this.orbs.filter((o) => !o.dead);
   }
 
@@ -546,7 +609,7 @@ export class GameScene extends Phaser.Scene {
     const hb = p.activeHitbox();
     if (hb) {
       for (const e of this.enemies) {
-        if (e.dead || hb.hit.has(e)) continue;
+        if (e.dead || e.untouchable || hb.hit.has(e)) continue;
         if (overlap(hb.rect, e.hurtRect())) {
           hb.hit.add(e);
           this.hitEnemy(e, hb.def.dmg, p.facing, hb.def.knock, hb.def.heavy, hb.rect);
@@ -566,7 +629,7 @@ export class GameScene extends Phaser.Scene {
       const r = proj.rect();
       if (proj.owner === 'player') {
         for (const e of this.enemies) {
-          if (e.dead || proj.hit.has(e)) continue;
+          if (e.dead || e.untouchable || proj.hit.has(e)) continue;
           if (overlap(r, e.hurtRect())) {
             proj.hit.add(e);
             this.hitEnemy(e, proj.dmg, proj.dir, proj.knock, true, r);
@@ -589,7 +652,7 @@ export class GameScene extends Phaser.Scene {
       if (this.spawnT <= 0 && alive < cap) {
         this.spawnT = (2.7 - progress * 1.1) * this.diff.spawnMul;
         const side: 1 | -1 = Math.random() < 0.75 ? 1 : -1;
-        const crowChance = this.stage.theme === 'storm' ? 0.55 : 0.35;
+        const crowChance = this.stage.theme === 'storm' || this.stage.theme === 'rift' ? 0.55 : 0.35;
         const kind: EnemyKind = progress > 0.12 && Math.random() < crowChance ? 'crow' : 'husk';
         this.spawnEnemy(kind, side);
       }

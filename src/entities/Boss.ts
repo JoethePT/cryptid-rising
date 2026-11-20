@@ -740,3 +740,435 @@ function drawBehemoth(g: Phaser.GameObjects.Graphics, t: number, o: { moving: bo
   g.fillStyle(COLORS.hollow, 0.9); g.fillCircle(sx, sy, 7);
   g.translateCanvas(0, -bob);
 }
+
+type LeviathanMode = 'enter' | 'surface' | 'spit' | 'lungeWind' | 'lunge' | 'dive' | 'hunt' | 'erupt' | 'summon';
+
+/**
+ * Stage 5 boss: a vast crocodilian serpent of living tar.
+ *  - SPIT: lobs tar globs that splash into sticky puddles (they slow you down).
+ *  - LUNGE: rears back, then snaps forward low across the ground. Jump or get out of reach.
+ *  - DIVE + HUNT: sinks out of reach (it can't be hurt) and a ripple slides toward you…
+ *    the ground bubbles under your feet, then it ERUPTS there. Move! Afterwards it rests on the
+ *    surface for a moment: your opening.
+ *  - SUMMON at 55% / 25%: Husks and a crow. Enraged below 50%.
+ */
+export class TarLeviathan extends Enemy {
+  private mode: LeviathanMode = 'enter';
+  private modeT = 0;
+  private modeLen = 1;
+  private summons = [0.55, 0.25];
+  private didAct = false;
+  private rise = 0; // 0 = under the tar, 1 = fully risen
+  private huntX = 0;
+
+  constructor(gs: GameScene, x: number, private arenaL: number, private arenaR: number) {
+    super(gs, x, GROUND_Y, 780, 220, 230);
+    this.useSprites(['leviathan-rise', 'leviathan-lunge'], COLORS.hollow, 2.5);
+    this.isBoss = true;
+    this.facing = -1;
+    this.score = 9000;
+    this.setDepth(8);
+    this.body.setAllowGravity(false);
+    this.body.setImmovable(true);
+    this.y = GROUND_Y;
+    this.untouchable = true;
+  }
+
+  get enraged() { return this.hp < this.maxHp * 0.5; }
+
+  private set(mode: LeviathanMode, len: number) {
+    this.mode = mode; this.modeT = len; this.modeLen = len; this.didAct = false;
+  }
+
+  protected onHit() { /* anchored in the tar */ }
+
+  protected think(dt: number) {
+    const p = this.player, b = this.body;
+    this.modeT -= dt;
+    b.setVelocity(0, 0);
+    const L = this.arenaL + 160, R = this.arenaR - 160;
+    const targetRise = this.mode === 'dive' || this.mode === 'hunt' ? 0 : this.mode === 'lunge' ? 0.85 : 1;
+    this.rise += (targetRise - this.rise) * Math.min(1, dt * (this.mode === 'erupt' ? 14 : 4));
+    this.untouchable = this.rise < 0.45;
+    switch (this.mode) {
+      case 'enter':
+        if (!this.didAct) { this.didAct = true; this.x = this.arenaR - 300; this.rise = 0; }
+        if (this.modeT <= 0 || this.rise > 0.95) { audio.sfx('leviathan'); this.gs.fx.shake(0.012, 500); this.set('surface', 1.2); }
+        break;
+      case 'surface':
+        this.faceToward(p.x);
+        if (this.modeT <= 0) {
+          if (this.summons.length && this.hp < this.maxHp * this.summons[0]) {
+            this.summons.shift(); this.set('summon', 1.2); audio.sfx('leviathan');
+            this.gs.events.emit('banner', 'THE BAYOU STIRS!', '#d68bff', 40);
+            break;
+          }
+          const dist = Math.abs(p.x - this.x), r = Math.random();
+          if (dist < 380 && r < 0.4) this.set('lungeWind', this.enraged ? 0.5 : 0.7);
+          else if (r < 0.7) this.set('spit', 1.3);
+          else this.set('dive', 0.7);
+        }
+        break;
+      case 'spit':
+        this.faceToward(p.x);
+        if (!this.didAct && this.modeT < this.modeLen - 0.35) {
+          this.didAct = true;
+          const n = this.enraged ? 4 : 3;
+          for (let i = 0; i < n; i++) {
+            this.gs.time.delayedCall(i * 220, () => {
+              if (this.dead) return;
+              audio.sfx('splash');
+              // aim each glob to land around the player (simple ballistic guess)
+              const dx = this.player.x + (i - (n - 1) / 2) * 110 - (this.x + this.facing * 90);
+              this.gs.spawnEnemyShot('tar', this.x + this.facing * 90, this.y - 200, dx / 1.4, -520);
+            });
+          }
+        }
+        if (this.modeT <= 0) this.set('surface', this.enraged ? 0.7 : 1.0);
+        break;
+      case 'lungeWind':
+        this.faceToward(p.x);
+        if (this.modeT <= 0) { audio.sfx('pounce'); this.set('lunge', 0.5); this.contactDmg = 20; }
+        break;
+      case 'lunge':
+        // the head snaps forward: widen the reach for the duration
+        if (this.modeT <= 0) { this.contactDmg = 0; this.set('surface', this.enraged ? 0.9 : 1.3); }
+        break;
+      case 'dive':
+        if (!this.didAct) { this.didAct = true; audio.sfx('splash'); this.gs.fx.burst(this.x, GROUND_Y - 20, 0x2a1c30, 24); }
+        if (this.modeT <= 0) { this.set('hunt', this.enraged ? 1.2 : 1.6); this.huntX = this.x; }
+        break;
+      case 'hunt': {
+        // a ripple slides under the ground toward the player
+        this.huntX += Phaser.Math.Clamp(p.x - this.huntX, -520 * dt, 520 * dt);
+        this.x = Phaser.Math.Clamp(this.huntX, L, R);
+        if (Math.random() < 0.35) this.gs.fx.burst(this.x + Phaser.Math.Between(-40, 40), GROUND_Y - 4, 0x6a4a7a, 1);
+        if (this.modeT <= 0) {
+          this.gs.spawnProjectile('geyser', this.x, GROUND_Y, 1);
+          this.set('erupt', 1.2);
+        }
+        break;
+      }
+      case 'erupt':
+        // hold under the bubbles, then burst up through them
+        if (this.modeT < this.modeLen - 0.8 && !this.didAct) {
+          this.didAct = true; this.rise = 0.2; this.contactDmg = 22;
+          audio.sfx('leviathan'); this.gs.fx.shake(0.016, 300);
+          this.gs.fx.burst(this.x, GROUND_Y - 60, 0x1a1020, 30);
+        }
+        if (!this.didAct) this.rise = 0;
+        if (this.modeT <= 0) { this.contactDmg = 0; this.set('surface', this.enraged ? 1.4 : 2.0); }
+        break;
+      case 'summon':
+        if (this.modeT <= 0) {
+          this.gs.spawnEnemy('husk', -1);
+          this.gs.spawnEnemy('husk', 1);
+          this.gs.spawnEnemy('crow', 1);
+          this.set('surface', 0.8);
+        }
+        break;
+    }
+    this.x = Phaser.Math.Clamp(this.x, L, R);
+    this.y = GROUND_Y;
+  }
+
+  hurtRect() {
+    // the risen neck and head; the hitbox shrinks as it sinks, and reaches further during a lunge
+    const h = 240 * Math.max(0.15, this.rise);
+    const reach = this.mode === 'lunge' ? 170 : 0;
+    const w = 200 + reach;
+    const x = this.facing > 0 ? this.x - 100 : this.x + 100 - w;
+    return new Phaser.Geom.Rectangle(x, this.y - h, w, h);
+  }
+
+  protected render() {
+    const t = this.animT, s = this.enraged ? 1.06 : 1;
+    const p = 1 - this.modeT / this.modeLen;
+    const sink = (1 - this.rise) * 260;
+    this.g.clear();
+    // the tar pool it lives in (always drawn, so you can see where it is; drawn over the neck's base)
+    const poolW = this.mode === 'hunt' ? 120 : 300;
+    const pool = () => {
+      this.g.fillStyle(0x07040a, 1); this.g.fillEllipse(0, 6, poolW, 34);
+      this.g.fillStyle(0x07040a, 1); this.g.fillRect(-poolW / 2 + 10, 6, poolW - 20, 60);
+      this.g.fillStyle(COLORS.hollow, 0.25 + 0.15 * Math.sin(t * 5)); this.g.fillEllipse(-poolW * 0.15, -2, poolW * 0.4, 6);
+    };
+    if (this.spr) {
+      pool();
+      const key = this.mode === 'lunge' || this.mode === 'lungeWind' || this.mode === 'erupt' ? 'leviathan-lunge' : 'leviathan-rise';
+      this.pose(key, { scale: s, dy: sink, dx: this.mode === 'lunge' ? 40 : this.mode === 'lungeWind' ? -20 * p : 0, rot: this.mode === 'spit' ? -0.06 : 0 });
+      this.spr.setAlpha(this.rise < 0.1 ? 0 : 1);
+      // crop the part that's under the tar
+      this.spr.setCrop(0, 0, this.spr.width, Math.max(0, this.spr.height - sink / Math.abs(this.spr.scaleY)));
+      return;
+    }
+    this.g.setScale(this.facing * s, s);
+    if (this.rise >= 0.05) drawLeviathan(this.g, t, this.rise, {
+      mouth: this.mode === 'spit' ? Math.min(1, p * 3) : this.mode === 'lunge' || this.mode === 'erupt' ? 1 : this.mode === 'lungeWind' ? 0.4 : 0.1,
+      reach: this.mode === 'lunge' ? 1 : this.mode === 'lungeWind' ? -0.3 * p : 0,
+      flash: this.flashT > 0,
+    });
+    pool();
+    if (this.mode === 'summon') this.g.lineStyle(5, COLORS.hollow, 1 - p).strokeCircle(120, -220, 30 + p * 170);
+    this.g.setScale(1, 1);
+  }
+}
+
+/** Procedural Tar Leviathan: a crocodilian head on a thick neck rising out of tar. Faces right, base at (0,0). */
+function drawLeviathan(g: Phaser.GameObjects.Graphics, t: number, rise: number, o: { mouth: number; reach: number; flash: boolean }) {
+  const O = COLORS.outline;
+  const tar = o.flash ? 0xffffff : 0x140c1a, tarL = o.flash ? 0xffffff : 0x2c1e36, sheen = 0x6a4a8a;
+  const H = 230 * rise;
+  const sway = Math.sin(t * 1.8) * 10;
+  const hx = 40 + o.reach * 150 + sway, hy = -H;
+  // neck: a thick curve of tar from the pool up to the head
+  for (let i = 0; i <= 12; i++) {
+    const k = i / 12;
+    const x = -50 + (hx + 10) * k * k + Math.sin(t * 2 + k * 3) * 6 * (1 - k);
+    const y = hy * Math.sin(k * Math.PI / 2) + 4;
+    const r = 52 - k * 18;
+    g.fillStyle(O, 1); g.fillCircle(x, y, r + 4);
+    g.fillStyle(i % 2 ? tar : tarL, 1); g.fillCircle(x, y, r);
+    if (i % 3 === 1) { g.fillStyle(sheen, 0.6); g.fillCircle(x - r * 0.3, y - r * 0.4, r * 0.25); }
+  }
+  // dorsal spines
+  for (let i = 3; i < 11; i += 2) {
+    const k = i / 12, x = -50 + (hx + 10) * k * k, y = hy * Math.sin(k * Math.PI / 2) - (52 - k * 18);
+    g.fillStyle(O, 1); g.fillTriangle(x - 10, y + 8, x + 10, y + 8, x - 4, y - 22);
+  }
+  // head: long snout, lower jaw opens with `mouth`
+  const jaw = o.mouth * 0.55;
+  g.fillStyle(O, 1); g.fillRoundedRect(hx - 40, hy - 34, 170, 50, 18);
+  g.fillStyle(tar, 1); g.fillRoundedRect(hx - 36, hy - 30, 162, 42, 16);
+  // lower jaw (rotated)
+  const jx = hx - 30, jy = hy + 8;
+  const ex = jx + Math.cos(jaw) * 150, ey = jy + Math.sin(jaw) * 150;
+  g.lineStyle(34, O, 1); g.lineBetween(jx, jy, ex, ey);
+  g.lineStyle(26, tarL, 1); g.lineBetween(jx, jy, ex, ey);
+  // teeth
+  g.fillStyle(0xe8dcc8, 1);
+  for (let i = 0; i < 7; i++) {
+    const tx = hx - 10 + i * 20;
+    g.fillTriangle(tx, hy + 10, tx + 8, hy + 10, tx + 4, hy + 24);
+    const k = (i + 1) / 8, bx = jx + (ex - jx) * k, by = jy + (ey - jy) * k;
+    g.fillTriangle(bx - 4, by - 10, bx + 4, by - 10, bx, by - 22);
+  }
+  if (o.mouth > 0.3) { g.fillStyle(COLORS.hollow, 0.6 * o.mouth); g.fillCircle(hx + 30, hy + 30 * o.mouth, 16 * o.mouth); }
+  // eyes and brow
+  g.fillStyle(O, 1); g.fillEllipse(hx + 6, hy - 34, 40, 24);
+  g.fillStyle(COLORS.hollow, 1); g.fillEllipse(hx + 10, hy - 34, 18, 10);
+  g.fillStyle(0xffffff, 0.9); g.fillCircle(hx + 13, hy - 36, 3);
+  // tar drips
+  for (let i = 0; i < 4; i++) {
+    const ph = (t * 0.9 + i * 0.27) % 1;
+    g.fillStyle(tar, 1 - ph); g.fillCircle(hx + i * 34, hy + 14 + ph * 60, 5 - ph * 3);
+  }
+}
+
+type HeartMode = 'enter' | 'hover' | 'burst' | 'tendrils' | 'beam' | 'descend' | 'low' | 'rise' | 'summon';
+
+/**
+ * Final boss: the Hollow Heart — the meteor's corrupted core, a vast beating crystal heart.
+ *  - BURST: a ring of Hollow orbs flung outward (more when enraged).
+ *  - TENDRILS: the ground glows, then tendrils lash up under you, one after another.
+ *  - BEAM: a thin line shows its aim at your height… then a full-width ray. Change height!
+ *  - DESCEND: it sinks low and pulses (contact hurts), then rests near the ground: the window for
+ *    fighters on foot. The Elder Dragon can reach it anywhere.
+ *  - SUMMON at 66% / 33%: crows and a Spirit Wolf (orbs!). Enraged below 50%.
+ */
+export class HollowHeart extends Enemy {
+  private mode: HeartMode = 'enter';
+  private modeT = 0;
+  private modeLen = 1;
+  private summons = [0.66, 0.33];
+  private didAct = false;
+  private beat = 0;
+
+  constructor(gs: GameScene, x: number, private arenaL: number, private arenaR: number) {
+    super(gs, x, -120, 1100, 200, 200, true);
+    this.useSprites(['heart-idle', 'heart-open'], COLORS.hollow, 3);
+    this.isBoss = true;
+    this.facing = -1;
+    this.score = 15000;
+    this.setDepth(8);
+  }
+
+  get enraged() { return this.hp < this.maxHp * 0.5; }
+
+  private set(mode: HeartMode, len: number) {
+    this.mode = mode; this.modeT = len; this.modeLen = len; this.didAct = false;
+  }
+
+  protected onHit() { /* immovable */ }
+
+  private flyTo(x: number, y: number, k: number) {
+    this.body.setVelocity((x - this.x) * k, (y - this.y) * k);
+  }
+
+  protected think(dt: number) {
+    const p = this.player;
+    this.modeT -= dt;
+    const cx = (this.arenaL + this.arenaR) / 2;
+    const L = this.arenaL + 200, R = this.arenaR - 200;
+    this.beat += dt * (this.enraged ? 2.2 : 1.5);
+    switch (this.mode) {
+      case 'enter':
+        this.flyTo(cx + 200, 290, 1.6);
+        if (Math.abs(this.y - 290) < 20) { audio.sfx('heart'); this.gs.fx.shake(0.012, 700); this.set('hover', 1.4); }
+        break;
+      case 'hover': {
+        this.flyTo(Phaser.Math.Clamp(cx + Math.sin(this.animT * 0.6) * 300, L, R), 280 + Math.sin(this.animT * 1.3) * 40, 1.2);
+        this.faceToward(p.x);
+        if (this.modeT <= 0) {
+          if (this.summons.length && this.hp < this.maxHp * this.summons[0]) {
+            this.summons.shift(); this.set('summon', 1.3); audio.sfx('heart');
+            this.gs.events.emit('banner', 'THE HOLLOW CALLS ITS OWN!', '#d68bff', 40);
+            break;
+          }
+          const grounded = p.y > 560, r = Math.random();
+          if (r < 0.25) this.set('burst', 1.2);
+          else if (r < 0.48) this.set('tendrils', 2.0);
+          else if (r < 0.72) this.set('beam', 1.8);
+          else if (grounded || r < 0.85) this.set('descend', 1.0);
+          else this.set('burst', 1.2);
+        }
+        break;
+      }
+      case 'burst':
+        this.body.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
+        if (!this.didAct && this.modeT < this.modeLen - 0.45) {
+          this.didAct = true;
+          audio.sfx('zap'); this.gs.fx.shake(0.008, 200);
+          const n = this.enraged ? 14 : 10, off = Math.random();
+          for (let i = 0; i < n; i++) {
+            const a = ((i + off) / n) * Math.PI * 2;
+            this.gs.spawnEnemyShot('orb', this.x + Math.cos(a) * 70, this.y + Math.sin(a) * 70, Math.cos(a) * 330, Math.sin(a) * 330);
+          }
+        }
+        if (this.modeT <= 0) this.set('hover', this.enraged ? 0.6 : 0.9);
+        break;
+      case 'tendrils':
+        this.body.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
+        if (!this.didAct) {
+          this.didAct = true;
+          const n = this.enraged ? 5 : 4;
+          for (let i = 0; i < n; i++) {
+            this.gs.time.delayedCall(i * 330, () => {
+              if (this.dead) return;
+              const x = Phaser.Math.Clamp(this.player.x + Phaser.Math.Between(-30, 30), this.arenaL + 40, this.arenaR - 40);
+              this.gs.spawnProjectile('tendril', x, GROUND_Y, 1);
+            });
+          }
+        }
+        if (this.modeT <= 0) this.set('hover', 0.8);
+        break;
+      case 'beam':
+        this.body.setVelocity(this.body.velocity.x * 0.9, this.body.velocity.y * 0.9);
+        if (!this.didAct) {
+          this.didAct = true;
+          const y = Phaser.Math.Clamp(p.centerY(), 230, GROUND_Y - 40);
+          this.gs.spawnProjectile('beam', cx, y, 1);
+          if (this.enraged) {
+            // a second ray a beat later, offset, so you can't just sit still
+            const y2 = y < 420 ? y + 170 : y - 170;
+            this.gs.time.delayedCall(700, () => { if (!this.dead) this.gs.spawnProjectile('beam', cx, y2, 1); });
+          }
+        }
+        if (this.modeT <= 0) this.set('hover', 0.8);
+        break;
+      case 'descend':
+        this.contactDmg = 18;
+        this.flyTo(Phaser.Math.Clamp(p.x, L, R), GROUND_Y - 130, 3);
+        if (this.modeT <= 0 || this.y > GROUND_Y - 150) {
+          this.contactDmg = 0; audio.sfx('boom'); this.gs.fx.shake(0.014, 300);
+          this.gs.fx.ring(this.x, GROUND_Y - 10, COLORS.hollow, 200, 420);
+          this.set('low', this.enraged ? 1.6 : 2.2);
+        }
+        break;
+      case 'low':
+        this.body.setVelocity(0, Math.sin(this.animT * 4) * 15);
+        if (this.modeT <= 0) this.set('rise', 0.9);
+        break;
+      case 'rise':
+        this.flyTo(this.x, 280, 2.4);
+        if (this.modeT <= 0) this.set('hover', 0.6);
+        break;
+      case 'summon':
+        this.body.setVelocity(0, 0);
+        if (this.modeT <= 0) {
+          this.gs.spawnEnemy('crow', -1);
+          this.gs.spawnEnemy('crow', 1);
+          if (this.player.form < 3) this.gs.spawnEnemy('wolf', Math.random() < 0.5 ? 1 : -1);
+          else this.gs.spawnEnemy('husk', -1);
+          this.set('hover', 0.9);
+        }
+        break;
+    }
+    if (this.mode !== 'enter') this.y = Phaser.Math.Clamp(this.y, 170, GROUND_Y - 120);
+  }
+
+  protected render() {
+    const t = this.animT, p = 1 - this.modeT / this.modeLen;
+    // heartbeat: a quick double pump
+    const ph = this.beat % 1;
+    const pump = ph < 0.12 ? Math.sin(ph / 0.12 * Math.PI) : ph > 0.22 && ph < 0.34 ? 0.6 * Math.sin((ph - 0.22) / 0.12 * Math.PI) : 0;
+    const s = (this.enraged ? 1.06 : 1) * (1 + pump * 0.06);
+    const charging = (this.mode === 'burst' || this.mode === 'beam') && !this.didAct ? 1 : this.mode === 'burst' && p < 0.5 ? 1 - p * 2 : 0;
+    this.g.clear();
+    if (this.spr) {
+      this.pose(this.mode === 'burst' || this.mode === 'beam' || this.mode === 'summon' ? 'heart-open' : 'heart-idle', { scale: s, dy: 120, rot: Math.sin(t * 0.8) * 0.04 });
+    } else {
+      drawHeart(this.g, t, { pump, charge: charging, flash: this.flashT > 0, enraged: this.enraged, scale: s });
+    }
+    if (this.mode === 'summon') this.g.lineStyle(5, COLORS.hollow, 1 - p).strokeCircle(0, 0, 40 + p * 200);
+    if (this.mode === 'beam' && !this.didAct) this.g.lineStyle(3, COLORS.hollow, 0.6).strokeCircle(0, 0, 120 - p * 60);
+  }
+}
+
+/** Procedural Hollow Heart: a beating crystal-and-flesh heart with orbiting shards. Centred on (0,0). */
+function drawHeart(g: Phaser.GameObjects.Graphics, t: number, o: { pump: number; charge: number; flash: boolean; enraged: boolean; scale: number }) {
+  const O = COLORS.outline, s = o.scale;
+  const glowC = o.enraged ? 0xff5ad0 : COLORS.hollow;
+  // aura
+  g.fillStyle(glowC, 0.12 + o.pump * 0.12 + o.charge * 0.15); g.fillCircle(0, 0, 150 * s);
+  g.fillStyle(glowC, 0.1); g.fillCircle(0, 0, 190 * s);
+  // dangling tendrils
+  for (let i = 0; i < 6; i++) {
+    const x0 = (-60 + i * 24) * s;
+    g.lineStyle(10, O, 1); g.beginPath(); g.moveTo(x0, 60 * s);
+    for (let k = 1; k <= 5; k++) g.lineTo(x0 + Math.sin(t * 2 + i + k * 0.8) * 14, (60 + k * 24) * s);
+    g.strokePath();
+    g.lineStyle(6, 0x3a1850, 1); g.beginPath(); g.moveTo(x0, 60 * s);
+    for (let k = 1; k <= 5; k++) g.lineTo(x0 + Math.sin(t * 2 + i + k * 0.8) * 14, (60 + k * 24) * s);
+    g.strokePath();
+  }
+  // heart body: two lobes and a point, outlined
+  const body = (c: number, grow: number) => {
+    g.fillStyle(c, 1);
+    g.fillCircle(-38 * s, -20 * s, (58 + grow) * s); g.fillCircle(38 * s, -20 * s, (58 + grow) * s);
+    g.fillTriangle((-92 - grow) * s, -4 * s, (92 + grow) * s, -4 * s, 0, (100 + grow) * s);
+  };
+  body(O, 5);
+  body(o.flash ? 0xffffff : 0x4a1a52, 0);
+  // crystal growths
+  const cryst = (x: number, y: number, h: number, a: number) => {
+    const cx = x * s, cy = y * s, dx = Math.sin(a), dy = -Math.cos(a);
+    g.fillStyle(O, 1); g.fillTriangle(cx - dy * 14, cy + dx * 14, cx + dy * 14, cy - dx * 14, cx + dx * (h + 6) * s, cy + dy * (h + 6) * s);
+    g.fillStyle(o.flash ? 0xffffff : 0x9a5ad8, 1); g.fillTriangle(cx - dy * 10, cy + dx * 10, cx + dy * 10, cy - dx * 10, cx + dx * h * s, cy + dy * h * s);
+  };
+  cryst(-50, -60, 60, -0.5); cryst(-10, -70, 80, -0.1); cryst(40, -64, 66, 0.4); cryst(70, -30, 44, 1.0); cryst(-78, -24, 40, -1.1);
+  // glowing veins
+  g.lineStyle(4, glowC, 0.6 + o.pump * 0.4);
+  g.beginPath(); g.moveTo(0, 80 * s); g.lineTo(-10 * s, 30 * s); g.lineTo(-40 * s, 0); g.lineTo(-60 * s, -30 * s); g.strokePath();
+  g.beginPath(); g.moveTo(-10 * s, 30 * s); g.lineTo(30 * s, -10 * s); g.lineTo(60 * s, -20 * s); g.strokePath();
+  // core
+  g.fillStyle(glowC, 0.5 + o.pump * 0.5); g.fillCircle(0, -4 * s, (26 + o.pump * 8 + o.charge * 10) * s);
+  g.fillStyle(0xffffff, 0.6 + o.charge * 0.4); g.fillCircle(0, -4 * s, (10 + o.charge * 8) * s);
+  // orbiting shards
+  for (let i = 0; i < 6; i++) {
+    const a = t * (o.enraged ? 1.6 : 1) + i * (Math.PI / 3);
+    const x = Math.cos(a) * 150 * s, y = Math.sin(a) * 60 * s;
+    g.fillStyle(O, 1); g.fillTriangle(x - 10, y + 8, x + 10, y + 8, x, y - 20);
+    g.fillStyle(0xb47cff, 1); g.fillTriangle(x - 7, y + 6, x + 7, y + 6, x, y - 16);
+  }
+}

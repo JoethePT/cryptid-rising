@@ -626,3 +626,208 @@ export function makeMillTextures(scene: Phaser.Scene) {
     ctx.fillStyle = g; ctx.fillRect(0, 0, 8, 8);
   });
 }
+
+// ---------------------------------------------------------------------------------------------
+// Stage 5: Tar Pit Bayou. Cypress swamp at night, hanging moss, tar seeping up through the water.
+export function makeBayouTextures(scene: Phaser.Scene) {
+  canvasTex(scene, 'ba-sky', GAME_W, GAME_H, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+    g.addColorStop(0, '#040a0a'); g.addColorStop(0.5, '#0d1c1a'); g.addColorStop(1, '#1e3330');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GAME_W, GAME_H);
+    const r = rng(501);
+    for (let i = 0; i < 120; i++) { ctx.fillStyle = `rgba(220,240,230,${0.2 + r() * 0.5})`; ctx.fillRect(r() * GAME_W, r() * 300, 1.5, 1.5); }
+    // a hazy green-tinged moon low over the swamp
+    const mg = ctx.createRadialGradient(960, 170, 10, 960, 170, 170);
+    mg.addColorStop(0, 'rgba(200,240,200,0.35)'); mg.addColorStop(1, 'rgba(160,220,180,0)');
+    ctx.fillStyle = mg; ctx.fillRect(790, 0, 340, 340);
+    ctx.fillStyle = '#d8ecd0'; ctx.beginPath(); ctx.arc(960, 170, 52, 0, Math.PI * 2); ctx.fill();
+  });
+  const W = 2048;
+  const cypress = (ctx: CanvasRenderingContext2D, x: number, base: number, h: number, col: string, moss: string, r: () => number) => {
+    ctx.fillStyle = col;
+    // flared buttress trunk
+    ctx.beginPath(); ctx.moveTo(x - h * 0.12, base); ctx.quadraticCurveTo(x - h * 0.03, base - h * 0.3, x - h * 0.025, base - h * 0.85);
+    ctx.lineTo(x + h * 0.025, base - h * 0.85); ctx.quadraticCurveTo(x + h * 0.03, base - h * 0.3, x + h * 0.12, base); ctx.closePath(); ctx.fill();
+    // flat-topped crown
+    for (let k = 0; k < 5; k++) {
+      ctx.beginPath(); ctx.ellipse(x + (k - 2) * h * 0.09, base - h * (0.85 + (k % 2) * 0.06), h * 0.16, h * 0.07, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // hanging moss
+    ctx.strokeStyle = moss; ctx.lineWidth = 2;
+    for (let k = 0; k < 12; k++) {
+      const mx = x + (r() - 0.5) * h * 0.5, my = base - h * (0.78 + r() * 0.08), len = h * (0.1 + r() * 0.2);
+      ctx.beginPath(); ctx.moveTo(mx, my); ctx.quadraticCurveTo(mx + 6, my + len / 2, mx - 2, my + len); ctx.stroke();
+    }
+  };
+  canvasTex(scene, 'ba-far', W, GAME_H, (ctx) => {
+    const r = rng(511);
+    for (let i = 0; i < 16; i++) { const x = r() * W; wrap(W, x, (xx) => cypress(ctx, xx, 520, 260 + r() * 120, '#0f1f1d', 'rgba(70,100,85,0.5)', r)); }
+    ctx.fillStyle = '#0f1f1d'; ctx.fillRect(0, 515, W, GAME_H - 515);
+  });
+  canvasTex(scene, 'ba-mid', W, GAME_H, (ctx) => {
+    const r = rng(523);
+    for (let i = 0; i < 9; i++) { const x = (i / 9) * W + r() * 120; wrap(W, x, (xx) => cypress(ctx, xx, 600, 380 + r() * 140, '#081311', 'rgba(90,120,100,0.7)', r)); }
+    ctx.fillStyle = '#081311'; ctx.fillRect(0, 596, W, GAME_H - 596);
+    // glints of water with tar slicks
+    for (let i = 0; i < 40; i++) {
+      ctx.fillStyle = r() < 0.3 ? 'rgba(196,107,255,0.25)' : 'rgba(170,220,200,0.18)';
+      ctx.fillRect(r() * W, 600 + r() * 30, 20 + r() * 50, 2);
+    }
+  });
+  canvasTex(scene, 'ba-mist', W, GAME_H, (ctx) => {
+    const r = rng(531);
+    for (let i = 0; i < 24; i++) {
+      const x = r() * W, y = 470 + r() * 180, rx = 180 + r() * 240;
+      wrap(W, x, (xx) => {
+        const g = ctx.createRadialGradient(xx, y, 0, xx, y, rx);
+        g.addColorStop(0, 'rgba(150,200,180,0.2)'); g.addColorStop(1, 'rgba(150,200,180,0)');
+        ctx.fillStyle = g; ctx.fillRect(xx - rx, y - rx, rx * 2, rx * 2);
+      });
+    }
+  });
+  canvasTex(scene, 'ba-near', W, GAME_H, (ctx) => {
+    const r = rng(541);
+    ctx.fillStyle = '#040908';
+    for (let i = 0; i < 10; i++) {
+      const x = (i / 10) * W + r() * 90;
+      wrap(W, x, (xx) => {
+        if (i % 2) {
+          // cypress knees poking out of the water
+          for (let k = 0; k < 5; k++) { const kx = xx + k * 26, kh = 30 + r() * 50; ctx.beginPath(); ctx.moveTo(kx - 9, 640); ctx.quadraticCurveTo(kx, 640 - kh * 1.4, kx + 9, 640); ctx.fill(); }
+        } else {
+          // reeds and cattails
+          for (let k = 0; k < 14; k++) {
+            const rx = xx + k * 9, rh = 70 + r() * 80;
+            ctx.fillRect(rx, 640 - rh, 3, rh);
+            if (k % 3 === 0) { ctx.beginPath(); ctx.ellipse(rx + 1.5, 640 - rh - 10, 5, 14, 0, 0, Math.PI * 2); ctx.fill(); }
+          }
+        }
+      });
+    }
+    ctx.fillRect(0, 630, W, GAME_H - 630);
+  });
+  canvasTex(scene, 'ba-ground', 512, 96, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 96);
+    g.addColorStop(0, '#2e3a26'); g.addColorStop(1, '#0e140c');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 96);
+    const r = rng(553);
+    for (let i = 0; i < 60; i++) {
+      ctx.fillStyle = `rgba(10,14,8,${0.3 + r() * 0.4})`;
+      ctx.beginPath(); ctx.ellipse(r() * 512, 14 + r() * 80, 6 + r() * 16, 2 + r() * 5, 0, 0, Math.PI * 2); ctx.fill();
+    }
+    // mossy, muddy bank on top
+    ctx.fillStyle = '#4a5e34'; ctx.fillRect(0, 0, 512, 8);
+    ctx.fillStyle = '#6a7e44'; for (let x = 0; x < 512; x += 14) ctx.fillRect(x, 0, 8 + ((x * 7) % 6), 3);
+  });
+  canvasTex(scene, 'ba-fg', W, 220, (ctx) => {
+    const r = rng(563);
+    ctx.fillStyle = '#020403';
+    for (let i = 0; i < 10; i++) {
+      const x = r() * W, s = 0.6 + r() * 0.6;
+      wrap(W, x, (xx) => {
+        for (let k = 0; k < 8; k++) {
+          ctx.beginPath(); ctx.moveTo(xx + (k - 4) * 10 * s, 220); ctx.quadraticCurveTo(xx + (k - 4) * 16 * s, 220 - 90 * s, xx + (k - 4) * 22 * s + 20, 220 - (100 + r() * 60) * s); ctx.lineTo(xx + (k - 3.5) * 10 * s, 220); ctx.fill();
+        }
+      });
+    }
+  });
+}
+
+// ---------------------------------------------------------------------------------------------
+// Stage 6: The Hollow Rift. The meteor's crater: void sky torn open, purple crystal spires, floating rocks.
+export function makeRiftTextures(scene: Phaser.Scene) {
+  canvasTex(scene, 'ri-sky', GAME_W, GAME_H, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, GAME_H);
+    g.addColorStop(0, '#05020a'); g.addColorStop(0.55, '#170a26'); g.addColorStop(1, '#2c1240');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, GAME_W, GAME_H);
+    const r = rng(601);
+    for (let i = 0; i < 160; i++) { ctx.fillStyle = `rgba(230,210,255,${0.2 + r() * 0.6})`; ctx.fillRect(r() * GAME_W, r() * GAME_H * 0.7, 1.5, 1.5); }
+    // the rift: a jagged tear of light in the sky
+    const cx = 760, cy = 170;
+    const rg = ctx.createRadialGradient(cx, cy, 10, cx, cy, 300);
+    rg.addColorStop(0, 'rgba(196,107,255,0.55)'); rg.addColorStop(1, 'rgba(196,107,255,0)');
+    ctx.fillStyle = rg; ctx.fillRect(cx - 300, cy - 300, 600, 600);
+    ctx.fillStyle = '#f2e0ff';
+    ctx.beginPath(); ctx.moveTo(cx - 180, cy + 20);
+    const pts = [[-120, -14], [-70, 12], [-20, -22], [30, 8], [80, -18], [140, 6], [190, -10]];
+    pts.forEach(([x, y]) => ctx.lineTo(cx + x, cy + y - 6));
+    pts.slice().reverse().forEach(([x, y]) => ctx.lineTo(cx + x - 6, cy + y + 10));
+    ctx.closePath(); ctx.fill();
+  });
+  const W = 2048;
+  const crystal = (ctx: CanvasRenderingContext2D, x: number, base: number, h: number, w: number, lean: number, col: string, glow: string) => {
+    ctx.fillStyle = col;
+    ctx.beginPath(); ctx.moveTo(x - w / 2, base); ctx.lineTo(x - w * 0.3 + lean, base - h * 0.8); ctx.lineTo(x + lean, base - h); ctx.lineTo(x + w * 0.3 + lean, base - h * 0.8); ctx.lineTo(x + w / 2, base); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = glow; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + lean * 0.5, base - 4); ctx.lineTo(x + lean, base - h + 6); ctx.stroke();
+  };
+  canvasTex(scene, 'ri-far', W, GAME_H, (ctx) => {
+    const r = rng(611);
+    // crater rim
+    ctx.fillStyle = '#150a20';
+    ctx.beginPath(); ctx.moveTo(0, GAME_H); ctx.lineTo(0, 470);
+    for (let x = 0; x <= W; x += 64) ctx.lineTo(x, 450 + Math.sin(x / 300) * 30 + r() * 16);
+    ctx.lineTo(W, GAME_H); ctx.closePath(); ctx.fill();
+    // floating rocks
+    for (let i = 0; i < 14; i++) {
+      const x = r() * W, y = 120 + r() * 240, s = 14 + r() * 30;
+      wrap(W, x, (xx) => {
+        ctx.fillStyle = '#1e1030';
+        ctx.beginPath(); ctx.moveTo(xx - s, y); ctx.lineTo(xx + s, y - s * 0.2); ctx.lineTo(xx + s * 0.4, y + s * 1.2); ctx.lineTo(xx - s * 0.5, y + s * 0.9); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = 'rgba(196,107,255,0.6)'; ctx.fillRect(xx - s * 0.3, y + s * 0.2, 3, 3);
+      });
+    }
+  });
+  canvasTex(scene, 'ri-mid', W, GAME_H, (ctx) => {
+    const r = rng(623);
+    for (let i = 0; i < 18; i++) {
+      const x = r() * W;
+      wrap(W, x, (xx) => crystal(ctx, xx, 610, 120 + r() * 220, 40 + r() * 50, (r() - 0.5) * 40, '#241038', 'rgba(196,107,255,0.7)'));
+    }
+    ctx.fillStyle = '#1a0c28'; ctx.fillRect(0, 600, W, GAME_H - 600);
+  });
+  canvasTex(scene, 'ri-haze', W, GAME_H, (ctx) => {
+    const r = rng(631);
+    for (let i = 0; i < 22; i++) {
+      const x = r() * W, y = 420 + r() * 230, rx = 180 + r() * 220;
+      wrap(W, x, (xx) => {
+        const g = ctx.createRadialGradient(xx, y, 0, xx, y, rx);
+        g.addColorStop(0, 'rgba(160,90,220,0.2)'); g.addColorStop(1, 'rgba(160,90,220,0)');
+        ctx.fillStyle = g; ctx.fillRect(xx - rx, y - rx, rx * 2, rx * 2);
+      });
+    }
+  });
+  canvasTex(scene, 'ri-near', W, GAME_H, (ctx) => {
+    const r = rng(641);
+    for (let i = 0; i < 8; i++) {
+      const x = (i / 8) * W + r() * 120;
+      wrap(W, x, (xx) => {
+        for (let k = 0; k < 3; k++) crystal(ctx, xx + k * 34, 640, 140 + r() * 200, 34 + r() * 26, (k - 1) * 20, '#0c0614', 'rgba(220,160,255,0.85)');
+      });
+    }
+    ctx.fillStyle = '#0c0614'; ctx.fillRect(0, 630, W, GAME_H - 630);
+  });
+  canvasTex(scene, 'ri-ground', 512, 96, (ctx) => {
+    const g = ctx.createLinearGradient(0, 0, 0, 96);
+    g.addColorStop(0, '#2a1838'); g.addColorStop(1, '#0c0614');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, 512, 96);
+    const r = rng(653);
+    // glowing cracks
+    ctx.strokeStyle = 'rgba(196,107,255,0.55)'; ctx.lineWidth = 2;
+    for (let i = 0; i < 10; i++) {
+      let x = r() * 512, y = 10 + r() * 20;
+      ctx.beginPath(); ctx.moveTo(x, y);
+      for (let k = 0; k < 4; k++) { x += (r() - 0.5) * 40; y += 10 + r() * 14; ctx.lineTo(x, y); }
+      ctx.stroke();
+    }
+    ctx.fillStyle = '#4a2c60'; ctx.fillRect(0, 0, 512, 6);
+    ctx.fillStyle = '#c46bff'; for (let x = 6; x < 512; x += 37) ctx.fillRect(x, 0, 6, 2);
+  });
+  canvasTex(scene, 'ri-fg', W, 220, (ctx) => {
+    const r = rng(661);
+    for (let i = 0; i < 9; i++) {
+      const x = r() * W, s = 0.6 + r() * 0.6;
+      wrap(W, x, (xx) => crystal(ctx, xx, 220, 120 * s, 50 * s, (r() - 0.5) * 30, '#030106', 'rgba(196,107,255,0.4)'));
+    }
+  });
+}

@@ -8,7 +8,10 @@ An original 2D side-scrolling beat-'em-up. Fight as park ranger **Mara Holt** or
 | 2 · Fossil Canyon | Velociraptor | Fossil Golem |
 | 3 · Storm Peak | Storm Dragon | Thunder Wyrm |
 | 4 · Ember Mill | Elder Bigfoot | Sawmill Behemoth |
-| 5–6 | Alpha Raptor, Elder Dragon | coming soon |
+| 5 · Tar Pit Bayou | Alpha Raptor | Tar Leviathan |
+| 6 · The Hollow Rift | Elder Dragon | The Hollow Heart |
+
+Play it online: **https://joethept.github.io/cryptid-rising/**
 
 Built with **Phaser 3 + TypeScript + Vite**. It runs in any desktop browser and on phones/tablets (landscape, on-screen controls).
 

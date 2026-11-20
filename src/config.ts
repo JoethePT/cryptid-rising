@@ -79,7 +79,7 @@ export const BEASTS: Record<BeastId, { bodyW: number; bodyH: number; speed: numb
   dragon: { bodyW: 150, bodyH: 100, speed: 1.3, jump: 1.0 },
 };
 
-export type Theme = 'forest' | 'canyon' | 'storm' | 'mill';
+export type Theme = 'forest' | 'canyon' | 'storm' | 'mill' | 'bayou' | 'rift';
 
 export interface StageDef {
   id: number;
@@ -95,9 +95,9 @@ export interface StageDef {
   length: number;
   arenaStart: number;
   platforms: { x: number; y: number; w: number }[];
+  tar?: { x: number; w: number }[];
 }
 
-const NONE = { theme: 'forest' as Theme, length: 6400, arenaStart: 5120, platforms: [] };
 
 // Six-stage plan (two acts).
 export const STAGES: StageDef[] = [
@@ -133,6 +133,22 @@ export const STAGES: StageDef[] = [
       { x: 2900, y: 500, w: 240 }, { x: 3750, y: 450, w: 200 }, { x: 4100, y: 360, w: 160 }, { x: 4900, y: 500, w: 220 },
     ],
   },
-  { id: 5, name: 'Tar Pit Bayou', beast: 'raptor', beastName: 'ALPHA RAPTOR', boss: 'TAR LEVIATHAN', bossTitle: 'The Sunken Maw', implemented: false, ...NONE },
-  { id: 6, name: 'The Hollow Rift', beast: 'dragon', beastName: 'ELDER DRAGON', boss: 'THE HOLLOW HEART', bossTitle: 'Star-Fallen Corruption', implemented: false, ...NONE },
+  {
+    id: 5, name: 'Tar Pit Bayou', beast: 'raptor', beastArt: 'alpha', beastName: 'ALPHA RAPTOR', boss: 'TAR LEVIATHAN', bossTitle: 'The Sunken Maw', implemented: true,
+    theme: 'bayou', length: 7200, arenaStart: 5920,
+    platforms: [
+      { x: 1150, y: 500, w: 200 }, { x: 1900, y: 450, w: 180 }, { x: 2700, y: 500, w: 220 }, { x: 3050, y: 400, w: 160 },
+      { x: 3900, y: 480, w: 220 }, { x: 4700, y: 440, w: 180 }, { x: 5300, y: 500, w: 200 },
+    ],
+    // sticky tar pools on the ground (slow you down while you wade through)
+    tar: [{ x: 1500, w: 220 }, { x: 2300, w: 260 }, { x: 3400, w: 240 }, { x: 4300, w: 300 }, { x: 5050, w: 200 }],
+  },
+  {
+    id: 6, name: 'The Hollow Rift', beast: 'dragon', beastArt: 'elderdragon', beastName: 'ELDER DRAGON', boss: 'THE HOLLOW HEART', bossTitle: 'Star-Fallen Corruption', implemented: true,
+    theme: 'rift', length: 7600, arenaStart: 6320,
+    platforms: [
+      { x: 900, y: 480, w: 180 }, { x: 1600, y: 410, w: 160 }, { x: 2350, y: 470, w: 200 }, { x: 3000, y: 380, w: 150 },
+      { x: 3700, y: 460, w: 200 }, { x: 4400, y: 400, w: 170 }, { x: 5100, y: 480, w: 220 }, { x: 5800, y: 420, w: 170 },
+    ],
+  },
 ];

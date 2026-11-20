@@ -1,7 +1,14 @@
 import Phaser from 'phaser';
 import { COLORS, GROUND_Y } from '../config';
 
-export type ProjKind = 'log' | 'flog' | 'pwave' | 'ewave' | 'spike' | 'shard' | 'bolt' | 'orb' | 'strike' | 'saw' | 'timber';
+export type ProjKind = 'log' | 'flog' | 'pwave' | 'ewave' | 'spike' | 'shard' | 'bolt' | 'orb' | 'strike' | 'saw' | 'timber'
+  | 'rend' | 'gbolt' | 'tar' | 'geyser' | 'tendril' | 'beam';
+
+/** Kinds fired by enemies (they use the difficulty's enemy damage). */
+export const ENEMY_KINDS: ProjKind[] = ['ewave', 'spike', 'shard', 'strike', 'orb', 'saw', 'timber', 'tar', 'geyser', 'tendril', 'beam'];
+
+const ERUPT_WARN = 0.8;
+const BEAM_WARN = 0.9;
 
 const STRIKE_WARN = 0.85;
 
@@ -18,6 +25,8 @@ export class Projectile {
   hit = new Set<object>();
   dead = false;
   private age = 0;
+  /** a tar glob that hit the ground (GameScene leaves a puddle) */
+  landed = false;
 
   constructor(scene: Phaser.Scene, readonly kind: ProjKind, x: number, y: number, readonly dir: number, dmgMul = 1) {
     this.x = x; this.y = y;
@@ -42,6 +51,36 @@ export class Projectile {
         // a beam dropped from above; a shadow on the ground shows where it lands
         this.owner = 'enemy'; this.vx = 0; this.vy = 0; this.grav = 820; this.w = 96; this.h = 40;
         this.dmg = 16 * dmgMul; this.knock = 0; this.life = 3; this.pierce = false;
+        break;
+      case 'rend':
+        // Alpha Raptor's crimson claw wave
+        this.owner = 'player'; this.vx = dir * 760; this.w = 80; this.h = 96;
+        this.dmg = 16 * dmgMul; this.knock = 220; this.life = 0.32; this.pierce = true;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
+        break;
+      case 'gbolt':
+        // Elder Dragon's golden spirit fire (fired in a fan, see aim())
+        this.owner = 'player'; this.vx = dir * 900; this.w = 80; this.h = 40;
+        this.dmg = 20 * dmgMul; this.knock = 220; this.life = 0.6; this.pierce = true;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
+        break;
+      case 'tar':
+        // Tar Leviathan's glob: arcs over and leaves a sticky puddle where it lands
+        this.owner = 'enemy'; this.vx = dir * 360; this.vy = -520; this.grav = 900; this.w = 40; this.h = 40;
+        this.dmg = 14 * dmgMul; this.knock = 0; this.life = 3; this.pierce = false;
+        break;
+      case 'geyser':
+      case 'tendril':
+        // erupts from the ground after a bubbling / glowing warning
+        this.owner = 'enemy'; this.vx = 0; this.w = kind === 'geyser' ? 110 : 60; this.h = kind === 'geyser' ? 200 : 150;
+        this.dmg = 18 * dmgMul; this.knock = 0; this.life = ERUPT_WARN + 0.5; this.pierce = true;
+        this.y = GROUND_Y - this.h / 2;
+        break;
+      case 'beam':
+        // the Hollow Heart's sweeping ray: a thin warning line, then a full-width beam (x/y = centre)
+        this.owner = 'enemy'; this.vx = 0; this.w = 1400; this.h = 46;
+        this.dmg = 20 * dmgMul; this.knock = 0; this.life = BEAM_WARN + 0.45; this.pierce = true;
+        this.g.setBlendMode(Phaser.BlendModes.ADD);
         break;
       case 'pwave':
         this.owner = 'player'; this.vx = dir * 640; this.w = 54; this.h = 48;
@@ -89,7 +128,8 @@ export class Projectile {
 
   /** Spikes are harmless while their warning is showing. */
   get harmless() {
-    return (this.kind === 'spike' && this.age < SPIKE_WARN) || (this.kind === 'strike' && this.age < STRIKE_WARN);
+    return (this.kind === 'spike' && this.age < SPIKE_WARN) || (this.kind === 'strike' && this.age < STRIKE_WARN)
+      || ((this.kind === 'geyser' || this.kind === 'tendril') && this.age < ERUPT_WARN) || (this.kind === 'beam' && this.age < BEAM_WARN);
   }
 
   /** Set an arbitrary velocity (aimed shots). */
@@ -107,6 +147,12 @@ export class Projectile {
     this.y += this.vy * dt;
     if (this.kind === 'shard' && this.y >= GROUND_Y - this.h / 2) {
       fx.burst(this.x, GROUND_Y - 6, 0xe8dcc0, 12);
+      this.kill();
+      return;
+    }
+    if (this.kind === 'tar' && this.y >= GROUND_Y - this.h / 2) {
+      fx.burst(this.x, GROUND_Y - 6, 0x2a1c30, 14);
+      this.landed = true;
       this.kill();
       return;
     }
@@ -142,6 +188,81 @@ export class Projectile {
       for (let i = 1; i <= 6; i++) g.lineTo((-45 + i * 15) * d, (Math.random() - 0.5) * 24);
       g.strokePath();
       g.fillStyle(COLORS.spirit, 0.4 * a); g.fillEllipse(0, 0, 100, 34);
+      return;
+    }
+    if (this.kind === 'rend') {
+      const a = Math.min(1, this.life * 5), d = this.dir;
+      g.rotation = 0;
+      for (let i = 0; i < 3; i++) {
+        g.lineStyle(8 - i * 2, i ? 0xff6a6a : 0xff2a3a, a * (1 - i * 0.2));
+        const mid = d > 0 ? 0 : Math.PI;
+        g.beginPath(); g.arc(-d * 30, 0, 50 - i * 6, mid - 1.1, mid + 1.1); g.strokePath();
+      }
+      return;
+    }
+    if (this.kind === 'gbolt') {
+      g.rotation = Math.atan2(this.vy, Math.abs(this.vx)) * this.dir;
+      const a = Math.min(1, this.life * 4), d = this.dir;
+      g.fillStyle(0xffb43a, 0.35 * a); g.fillEllipse(0, 0, 100, 40);
+      g.lineStyle(5, 0xfff0b0, a);
+      g.beginPath(); g.moveTo(-40 * d, 0);
+      for (let i = 1; i <= 5; i++) g.lineTo((-40 + i * 16) * d, (Math.random() - 0.5) * 18);
+      g.strokePath();
+      g.fillStyle(0xffffff, a); g.fillCircle(30 * d, 0, 8);
+      return;
+    }
+    if (this.kind === 'tar') {
+      g.rotation = this.age * 3;
+      g.fillStyle(COLORS.hollow, 0.25); g.fillCircle(0, 0, 28);
+      g.fillStyle(0x0c0810, 1); g.fillCircle(0, 0, 20); g.fillCircle(10, -8, 10); g.fillCircle(-12, 6, 9);
+      g.fillStyle(0x5a3a6a, 1); g.fillCircle(-6, -8, 5);
+      g.fillStyle(0xffffff, 0.5); g.fillCircle(-7, -9, 2);
+      return;
+    }
+    if (this.kind === 'geyser' || this.kind === 'tendril') {
+      g.rotation = 0;
+      const base = this.h / 2, tar = this.kind === 'geyser';
+      const col = tar ? 0x1a1020 : 0x3a1850, rim = tar ? 0x6a4a7a : COLORS.hollow;
+      if (this.age < ERUPT_WARN) {
+        const a = 0.4 + 0.5 * Math.abs(Math.sin(this.age * 16));
+        g.fillStyle(rim, 0.3 * a); g.fillEllipse(0, base - 2, this.w * 1.4, 20);
+        for (let i = 0; i < 4; i++) {
+          const bx = (i - 1.5) * this.w * 0.28, by = base - 6 - ((this.age * 60 + i * 13) % 26);
+          g.fillStyle(tar ? 0x2a1c30 : COLORS.hollow, a); g.fillCircle(bx, by, 5 + (i % 2) * 3);
+        }
+        return;
+      }
+      const rise = Math.min(1, (this.age - ERUPT_WARN) / 0.1);
+      const fade = this.life < 0.15 ? this.life / 0.15 : 1;
+      const top = base - this.h * rise;
+      if (tar) {
+        g.fillStyle(col, fade); g.fillRoundedRect(-this.w / 2, top, this.w, base - top, 20);
+        g.fillStyle(rim, 0.7 * fade); g.fillCircle(-14, top + 16, 9); g.fillCircle(18, top + 40, 6);
+        g.fillStyle(col, fade); for (let i = 0; i < 5; i++) g.fillCircle((i - 2) * 22, top + Math.sin(this.age * 20 + i) * 6, 16);
+      } else {
+        // writhing Hollow tendril
+        g.lineStyle(26, COLORS.outline, fade); g.beginPath(); g.moveTo(0, base);
+        for (let i = 1; i <= 6; i++) g.lineTo(Math.sin(this.age * 12 + i) * 14, base - (base - top) * i / 6);
+        g.strokePath();
+        g.lineStyle(18, col, fade); g.beginPath(); g.moveTo(0, base);
+        for (let i = 1; i <= 6; i++) g.lineTo(Math.sin(this.age * 12 + i) * 14, base - (base - top) * i / 6);
+        g.strokePath();
+        g.fillStyle(rim, fade); g.fillCircle(Math.sin(this.age * 12 + 6) * 14, top, 9);
+      }
+      return;
+    }
+    if (this.kind === 'beam') {
+      g.rotation = 0;
+      if (this.age < BEAM_WARN) {
+        const a = 0.3 + 0.5 * Math.abs(Math.sin(this.age * 20));
+        g.lineStyle(3, COLORS.hollow, a); g.lineBetween(-this.w / 2, 0, this.w / 2, 0);
+        g.fillStyle(COLORS.hollow, 0.08 * a); g.fillRect(-this.w / 2, -this.h / 2, this.w, this.h);
+        return;
+      }
+      const fade = Math.min(1, this.life / 0.2);
+      g.fillStyle(COLORS.hollow, 0.35 * fade); g.fillRect(-this.w / 2, -this.h / 2 - 10, this.w, this.h + 20);
+      g.fillStyle(0xe8c8ff, 0.8 * fade); g.fillRect(-this.w / 2, -this.h / 4, this.w, this.h / 2);
+      g.fillStyle(0xffffff, fade); g.fillRect(-this.w / 2, -4, this.w, 8);
       return;
     }
     if (this.kind === 'orb') {

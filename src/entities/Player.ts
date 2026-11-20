@@ -90,8 +90,11 @@ export class Player extends Phaser.GameObjects.Container {
     // the beast can fall back to the drawn puppet on its own if its art is missing
     this.beastSprites = spritesReady(gs, BEAST_POSES[beast].map((p) => `${this.beastArt}-${p}`));
     if (!this.beastSprites && this.beastArt !== beast && spritesReady(gs, BEAST_POSES[beast].map((p) => `${beast}-${p}`))) {
-      // no painted Elder Bigfoot yet: wear the Bigfoot art, greyed with age
-      this.beastArt = beast; this.beastSprites = true; this.ageTint = 0xb8bcc6;
+      // no painted art for this variant yet: wear the base beast's art, recoloured
+      // (Elder Bigfoot greyed with age, Alpha Raptor blood-red, Elder Dragon gilded)
+      const tints: Record<string, number> = { elder: 0xb8bcc6, alpha: 0xd8706a, elderdragon: 0xffd27a };
+      this.ageTint = tints[this.beastArt] ?? 0xffffff;
+      this.beastArt = beast; this.beastSprites = true;
     }
     this.spr = gs.add.image(0, 0, this.useSprites ? `${heroId}-idle` : '__DEFAULT').setVisible(this.useSprites);
     if (this.useSprites && this.spr.preFX && shaderFxOk()) {
@@ -117,6 +120,10 @@ export class Player extends Phaser.GameObjects.Container {
   get isElderArt() { return this.beastArt === 'elder'; }
   /** Stage 4's Elder Bigfoot hits harder and throws burning logs */
   get isElder() { return this.isBeast && this.gs.stage.beastArt === 'elder'; }
+  /** Act 2 variants (Elder Bigfoot, Alpha Raptor, Elder Dragon) hit harder */
+  get isVariant() { return this.isBeast && !!this.gs.stage.beastArt; }
+  get isAlpha() { return this.isBeast && this.gs.stage.beastArt === 'alpha'; }
+  get isElderDragon() { return this.isBeast && this.gs.stage.beastArt === 'elderdragon'; }
   get isRaptor() { return this.isBeast && this.beast === 'raptor'; }
   get isDragon() { return this.isBeast && this.beast === 'dragon'; }
   private diveVy = 0;
@@ -209,6 +216,7 @@ export class Player extends Phaser.GameObjects.Container {
       const s = this.formDef.scale * HS;
       def.x = 28 * s; def.y = -175 * s; def.w = 96 * s; def.h = 130 * s;
     }
+    if (this.isVariant && !this.isElder) def.dmg *= 1.25;
     this.atk = { def, t: 0, fired: false, hit: new Set() };
     this.bufT = 0;
     audio.sfx(kind === 'pounce' ? 'pounce' : kind === 'log' ? 'throw' : 'swing');
@@ -220,7 +228,13 @@ export class Player extends Phaser.GameObjects.Container {
       this.gs.playerPound(this.x + this.facing * 60, this.y, this.isElder);
     } else if (d.kind === 'breath') {
       audio.sfx('zap');
-      this.gs.spawnProjectile('bolt', this.x + this.facing * 110, this.y - 62, this.facing);
+      if (this.isElderDragon) {
+        // spirit-fire fan: three golden bolts
+        for (const vy of [-260, 0, 260]) this.gs.spawnProjectile('gbolt', this.x + this.facing * 110, this.y - 62, this.facing, vy);
+      } else this.gs.spawnProjectile('bolt', this.x + this.facing * 110, this.y - 62, this.facing);
+    } else if (d.kind === 'slash' && this.isAlpha) {
+      // the Alpha's claws throw a short crimson rending wave
+      this.gs.spawnProjectile('rend', this.x + this.facing * 90, this.y - 60, this.facing);
     } else if (d.kind === 'pounce') {
       this.body.setVelocity(this.facing * 660, -560);
       this.gs.fx.burst(this.x, this.y - 10, 0xc47a4c, 10);
@@ -278,7 +292,10 @@ export class Player extends Phaser.GameObjects.Container {
       a.t += dt;
       if (!a.fired && a.t >= d.startup) { a.fired = true; this.onActive(d); }
       if (d.kind === 'airkick' && this.onGround) this.atk = undefined;
-      else if (d.kind === 'pounce' && a.fired && this.onGround && a.t > d.startup + 0.15) { this.atk = undefined; this.gs.fx.shake(0.006, 100); }
+      else if (d.kind === 'pounce' && a.fired && this.onGround && a.t > d.startup + 0.15) {
+        this.atk = undefined; this.gs.fx.shake(this.isAlpha ? 0.012 : 0.006, 100);
+        if (this.isAlpha) this.gs.playerPound(this.x, this.y, false);
+      }
       else if (a.t >= d.startup + d.active + d.recover) this.atk = undefined;
     }
 
@@ -297,7 +314,7 @@ export class Player extends Phaser.GameObjects.Container {
     const left = c.isDown('left'), right = c.isDown('right');
     if (!this.atk) this.setCrouch(this.onGround && c.isDown('down') && !this.isBeast);
 
-    const speed = this.hero.speed * this.formDef.speed * (this.isBeast ? BEASTS[this.beast].speed : 1);
+    const speed = this.hero.speed * this.formDef.speed * (this.isBeast ? BEASTS[this.beast].speed : 1) * this.gs.groundSlow(this.x, this.onGround);
     // heavy Bigfoot footfalls
     if (this.isBeast && this.beast === 'bigfoot' && this.onGround && Math.abs(b.velocity.x) > 20) {
       this.stepT -= dt;
@@ -449,7 +466,7 @@ export class Player extends Phaser.GameObjects.Container {
 
   /** Pick a painted pose + code-driven secondary motion (bob, lean, squash). */
   private raptorPose(pose: Pose) {
-    const k = (p: string) => `raptor-${p}`;
+    const k = (p: string) => `${this.beastArt}-${p}`;
     const t = pose.t, p = pose.p;
     let key = k('idle'), rot = 0, dx = 0, dy = 0, sx = 1, sy = 1;
     switch (pose.state) {
@@ -468,7 +485,7 @@ export class Player extends Phaser.GameObjects.Container {
   }
 
   private dragonPose(pose: Pose) {
-    const k = (p: string) => `dragon-${p}`;
+    const k = (p: string) => `${this.beastArt}-${p}`;
     const t = pose.t, p = pose.p, vy = this.body.velocity.y;
     let key = k('hover'), rot = 0, dx = 0, dy = Math.sin(t * 3) * 4, sx = 1, sy = 1;
     switch (pose.state) {

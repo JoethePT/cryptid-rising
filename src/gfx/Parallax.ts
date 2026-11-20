@@ -24,6 +24,16 @@ export const THEMES: Record<Theme, { sky: string; layers: [string, number, numbe
     layers: [['mi-ridge', 0.1], ['mi-mill', 0.25], ['mi-smoke', 0.4, 0.9], ['mi-near', 0.55]],
     ground: 'mi-ground', fg: 'mi-fg', motes: 0xffa04a,
   },
+  bayou: {
+    sky: 'ba-sky',
+    layers: [['ba-far', 0.1], ['ba-mid', 0.25], ['ba-mist', 0.4, 0.9], ['ba-near', 0.55]],
+    ground: 'ba-ground', fg: 'ba-fg', motes: 0xc8ff6a,
+  },
+  rift: {
+    sky: 'ri-sky',
+    layers: [['ri-far', 0.08], ['ri-mid', 0.22], ['ri-haze', 0.4, 0.9], ['ri-near', 0.55]],
+    ground: 'ri-ground', fg: 'ri-fg', motes: 0xd8a0ff,
+  },
 };
 
 /** Screen-fixed tile-sprite layers that scroll at a fraction of the camera. */

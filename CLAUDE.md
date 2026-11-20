@@ -44,8 +44,8 @@ Dying drops you one form level. Beasts have super armour (they flinch but don't 
 | 2 | Fossil Canyon | Velociraptor | Fossil Golem | **playable** |
 | 3 | Storm Peak | Storm Dragon (flight stage) | Thunder Wyrm | **playable** |
 | 4 | Ember Mill | Elder Bigfoot | Sawmill Behemoth | **playable** |
-| 5 | Tar Pit Bayou | Alpha Raptor | Tar Leviathan | planned |
-| 6 | The Hollow Rift | Elder Dragon | The Hollow Heart | planned |
+| 5 | Tar Pit Bayou | Alpha Raptor | Tar Leviathan | **playable** |
+| 6 | The Hollow Rift | Elder Dragon (flight stage) | The Hollow Heart | **playable** (final; win → epilogue + credits, `EndingScene`) |
 
 ## Controls
 | Action | Keyboard | Gamepad |
@@ -66,13 +66,16 @@ Velociraptor moves: **Claw Slash** (J), fast and chainable. **Pounce** (K), a le
 Storm Dragon moves: **free flight** (W/Space up, S down). **Claw** (J). **Lightning Breath** (K), a piercing bolt. **Dive** (dash), which goes up or down if you hold those directions. Thunder Wyrm: lightning columns (they flicker first), aimed storm orbs, side sweeps at your height, and swoops that end resting low, which is the window for fighters on foot. It summons crows at 55% and 25% HP.
 Bigfoot moves: **Ground Pound** (J), which hits up close and sends shockwaves both ways. **Log Throw** (K), an arcing projectile. **Shoulder Charge** (dash), which damages enemies.
 Elder Bigfoot (Stage 4, `beastArt: 'elder'` on the stage, `elder-*` sprites, falls back to grey-tinted Bigfoot art): same moves, harder pound with an ember burst and a second shockwave pair, and a burning log that smashes through enemies. Sawmill Behemoth: saw charge (revs with sparks, jump it; it gets stuck in the wall, your opening), rolling sawblades (jump), falling beams (watch the shadows), summons at 55% and 25% HP. It has a procedural fallback (`drawBehemoth`) until `behemoth-*` sprites exist.
+Act 2 beast variants are set by `beastArt` on the stage (`elder`, `alpha`, `elderdragon`). Each looks for `<beastArt>-<pose>` sprites and, if they're missing, wears the base beast's art with a tint (grey, blood-red, gold). Variants deal ×1.25 damage (Elder Bigfoot gets its own boosts instead).
+Alpha Raptor (Stage 5): Claw Slash also throws a short crimson rending wave; Pounce lands with a shockwave. Tar Leviathan: tar-glob spit (leaves sticky puddles), low lunge, dive + hunt (it can't be hurt while under; the ground bubbles under you, then it erupts there), then rests surfaced (your opening); summons at 55%/25%. Bayou tar pools (`tar` on the stage) halve your speed on foot.
+Elder Dragon (Stage 6): Lightning Breath becomes a three-way golden spirit-fire fan. The Hollow Heart (final boss, flying): orb ring burst, ground tendrils under you, a full-width beam at your height (a thin line warns first; enraged fires two), descends low to rest (window for fighters on foot), summons crows and a Spirit Wolf at 66%/33%. Both bosses use procedural art (`drawLeviathan`, `drawHeart`) until `leviathan-rise/lunge` and `heart-idle/open` sprites exist.
 
 ## Audio
 `src/systems/Audio.ts` synthesizes everything, so the game has no audio files:
-- **Music:** original 16-bit console-style songs with 2-operator FM bass and lead, square arpeggios and synth drums. Each song is a chord chart plus a hand-written lead line (16th-note tokens). Tracks: `title`, `forest`, `canyon`, `storm`, `mill`, `boss`, `clear`, `gameover`.
+- **Music:** original 16-bit console-style songs with 2-operator FM bass and lead, square arpeggios and synth drums. Each song is a chord chart plus a hand-written lead line (16th-note tokens). Tracks: `title`, `forest`, `canyon`, `storm`, `mill`, `bayou`, `rift`, `boss`, `heart` (final boss), `clear`, `gameover`, `ending`.
 - **SFX:** `audio.sfx(name)` covers swing, hit, heavy, hurt, jump, orb, powerup, transform, slam, throw, poof, caw, roar, boom, crack, pounce, zap, thunder, and the menu move/select/pause sounds.
-- **Creature voices** (formant-filtered growl synth): `bigfoot`, `raptor`, `dragon` (transformations), `elder` (Elder Bigfoot), `moose`, `golem`, `wyrm`, `behemoth` (bosses), `growl`/`huskdie` (Husk), `howl`/`snarl` (Spirit Wolf), `step` (Bigfoot footfalls).
-- **Ambience:** `audio.ambience('forest' | 'canyon' | 'storm' | 'mill' | null)` loops crickets/breeze, desert wind, rain/wind or fire crackle/machinery under the music.
+- **Creature voices** (formant-filtered growl synth): `bigfoot`, `raptor`, `dragon` (transformations), `elder`, `alpha`, `elderdragon` (Act 2 beasts), `moose`, `golem`, `wyrm`, `behemoth`, `leviathan`, `heart` (bosses), `growl`/`huskdie` (Husk), `howl`/`snarl` (Spirit Wolf), `step` (Bigfoot footfalls).
+- **Ambience:** `audio.ambience(theme | null)` loops crickets/breeze, desert wind, rain/wind, fire crackle/machinery, frogs/insects (bayou) or a void drone (rift) under the music.
 - Audio unlocks on the first key, click or touch (a browser rule). **M** toggles mute, and the setting is remembered in localStorage.
 
 ## Code map
@@ -89,12 +92,12 @@ src/
   gfx/Parallax.ts      screen-fixed tile-sprite parallax
   entities/Player.ts   player state machine, attacks/hitboxes, forms
   entities/Enemies.ts  Enemy base + Husk, Crow, SpiritWolf (orb carrier)
-  entities/Boss.ts     MooseTitan (charge / rear-slam / summon, enrages below 50%)
+  entities/Boss.ts     the six bosses: MooseTitan, FossilGolem, ThunderWyrm, SawmillBehemoth, TarLeviathan, HollowHeart
   entities/Projectile.ts  logs, shockwaves; Orb pickup
   scenes/GameScene.ts  stage flow, spawner, combat resolution, hitstop, transformation cinematic
   scenes/HudScene.ts   HUD (separate scene so it ignores camera shake/zoom)
   scenes/MenuScene.ts  title + hero select + difficulty
-  scenes/MiscScenes.ts Boot, Pause, Result
+  scenes/MiscScenes.ts Boot, Pause, Result, Ending (epilogue + credits)
   scenes/TouchScene.ts on-screen joystick + buttons for phones/tablets
 ```
 

@@ -4,11 +4,11 @@
 
 type SfxName =
   | 'swing' | 'hit' | 'heavy' | 'hurt' | 'jump' | 'orb' | 'powerup' | 'transform' | 'slam' | 'throw'
-  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce' | 'zap' | 'thunder' | 'saw' | 'clang'
+  | 'poof' | 'caw' | 'roar' | 'boom' | 'crack' | 'select' | 'move' | 'pause' | 'pounce' | 'zap' | 'thunder' | 'saw' | 'clang' | 'splash'
   // creature voices
-  | 'bigfoot' | 'elder' | 'raptor' | 'dragon' | 'moose' | 'golem' | 'wyrm' | 'behemoth' | 'growl' | 'huskdie' | 'howl' | 'snarl' | 'step';
+  | 'bigfoot' | 'elder' | 'raptor' | 'alpha' | 'dragon' | 'elderdragon' | 'moose' | 'golem' | 'wyrm' | 'behemoth' | 'leviathan' | 'heart' | 'growl' | 'huskdie' | 'howl' | 'snarl' | 'step';
 
-export type Ambience = 'forest' | 'canyon' | 'storm' | 'mill';
+export type Ambience = 'forest' | 'canyon' | 'storm' | 'mill' | 'bayou' | 'rift';
 
 interface VoiceOpts {
   type?: OscillatorType;
@@ -22,7 +22,7 @@ interface VoiceOpts {
   echo?: boolean;
 }
 
-export type SongName = 'title' | 'forest' | 'canyon' | 'storm' | 'mill' | 'boss' | 'clear' | 'gameover';
+export type SongName = 'title' | 'forest' | 'canyon' | 'storm' | 'mill' | 'bayou' | 'rift' | 'heart' | 'ending' | 'boss' | 'clear' | 'gameover';
 
 interface Song {
   bpm: number;
@@ -117,6 +117,71 @@ const SONGS: Record<SongName, Song> = {
       'F#5 - - - A5 - - - D6 - C6 - A5 - F#5 -',
       'D5 - - - F#5 - A5 - D6 - - - . . . .',
     ].join(' '),
+  },
+  // Stage 5: "The Sunken Maw" — swampy, swung B minor
+  bayou: {
+    bpm: 112, loop: true, bass: 'pulse', arp: 'updown',
+    drums: { k: 'x.....x...x.....', s: '....x.......x...', h: 'x..xx..xx..xx..x' },
+    chords: ['Bm', 'G', 'Em', 'F#', 'Bm', 'D', 'Em', 'F#'],
+    lead: [
+      'B4 - - - D5 - - - F#5 - - - E5 - D5 -',
+      'D5 - - - B4 - G4 - - - B4 - D5 - - -',
+      'E5 - - - G5 - - - E5 - - - B4 - - -',
+      'A#4 - - - C#5 - - - F#5 - - - . . . .',
+      'F#5 - - - D5 - - - B4 - - - D5 - F#5 -',
+      'A5 - - - F#5 - - - D5 - - - A4 - - -',
+      'G5 - - - E5 - - - B4 - - - E5 - G5 -',
+      'F#5 - - - E5 - - - C#5 - - - A#4 - - -',
+    ].join(' '),
+  },
+  // Stage 6: "Star-Fallen" — soaring, otherworldly E minor
+  rift: {
+    bpm: 140, loop: true, bass: 'drive', arp: 'up',
+    drums: { k: 'x...x...x...x.x.', s: '....x.......x...', h: 'xxx.xxx.xxx.xxx.' },
+    chords: ['Em', 'C', 'G', 'D', 'Em', 'C', 'Am', 'B'],
+    lead: [
+      'E5 - - - B4 - - - E5 - G5 - B5 - - -',
+      'C6 - - - B5 - G5 - E5 - - - G5 - - -',
+      'D6 - - - B5 - - - G5 - B5 - D6 - - -',
+      'F#5 - - - A5 - - - D6 - - - . . . .',
+      'G5 - - - E5 - - - B5 - - - A5 - G5 -',
+      'E5 - - - G5 - - - C6 - B5 - A5 - G5 -',
+      'A5 - - - C6 - - - E6 - - - C6 - A5 -',
+      'B5 - - - D#6 - - - F#6 - - - . . . .',
+    ].join(' '),
+  },
+  // Final boss: "The Hollow Heart" — driving, desperate D minor
+  heart: {
+    bpm: 160, loop: true, bass: 'gallop', arp: 'updown',
+    drums: { k: 'x.x.x.x.x.x.x.x.', s: '....x.......x.xx', h: 'xxxxxxxxxxxxxxxx' },
+    chords: ['Dm', 'Bb', 'Gm', 'A', 'Dm', 'Eb', 'Gm', 'A'],
+    lead: [
+      'D5 - A5 - D6 - A5 - F5 - - - E5 - D5 -',
+      'Bb4 - F5 - Bb5 - F5 - D5 - - - C5 - Bb4 -',
+      'G4 - D5 - G5 - Bb5 - A5 - G5 - F5 - - -',
+      'E5 - - - C#5 - - - A4 - - - . . A4 -',
+      'D6 - - - C6 - Bb5 - A5 - - - F5 - D5 -',
+      'Eb6 - - - D6 - C6 - Bb5 - - - G5 - Eb5 -',
+      'G5 - - - Bb5 - D6 - G6 - - - F6 - E6 -',
+      'C#6 - - - E6 - - - A6 - - - . . . .',
+    ].join(' '),
+  },
+  // Ending: "Dawn over the Pines" — warm D major
+  ending: {
+    bpm: 96, loop: true, bass: 'long', arp: 'up',
+    drums: { k: 'x.......x.......', s: '........x.......', h: 'x...x...x...x...' },
+    chords: ['D', 'A', 'Bm', 'G', 'D', 'A', 'G', 'A'],
+    lead: [
+      'F#5 - - - - - E5 - D5 - - - A4 - - -',
+      'C#5 - - - E5 - - - A5 - - - - - - -',
+      'B4 - - - D5 - - - F#5 - - - E5 - D5 -',
+      'D5 - - - - - - - B4 - - - - - - -',
+      'A5 - - - - - G5 - F#5 - - - D5 - - -',
+      'E5 - - - - - F#5 - A5 - - - - - - -',
+      'B5 - - - A5 - G5 - F#5 - - - E5 - D5 -',
+      'E5 - - - - - - - - - - - . . . .',
+    ].join(' '),
+    leadVol: 0.8,
   },
   // Boss: "Hollow Lord" — tense C minor
   boss: {
@@ -459,6 +524,25 @@ class AudioEngine {
         v({ pitch: [[0, 700], [0.15, 1500], [0.5, 1200], [0.9, 650]], dur: 0.95, vol: 0.32, growl: 42, growlDepth: 0.08, formants: [[2400, 5], [3600, 6]], breath: 0.15 });
         v({ type: 'square', pitch: [[0, 1400], [0.6, 900]], dur: 0.6, vol: 0.06, formants: [[3000, 3]] }, t + 0.05);
         break;
+      case 'alpha':
+        // the raptor's screech, deeper and doubled, with a chattering rattle
+        v({ pitch: [[0, 480], [0.15, 1100], [0.6, 900], [1.1, 420]], dur: 1.15, vol: 0.34, growl: 30, growlDepth: 0.12, formants: [[1700, 4], [2900, 5]], breath: 0.2, echo: true });
+        v({ pitch: [[0, 160], [0.8, 110]], dur: 0.9, vol: 0.2, growl: 40, growlDepth: 0.3, formants: [[500, 3]] }, t + 0.1);
+        break;
+      case 'elderdragon':
+        v({ pitch: [[0, 130], [0.5, 120], [2, 62]], dur: 2.2, vol: 0.55, growl: 16, growlDepth: 0.2, formants: [[420, 2.5], [1100, 4]], breath: 0.35, echo: true });
+        [523, 659, 784].forEach((f, i) => this.voice(t + 0.5 + i * 0.12, { type: 'triangle', pitch: [[0, f], [1.2, f]], dur: 1.4, vol: 0.05, formants: [[f * 2, 1]], echo: true }));
+        break;
+      case 'leviathan':
+        // a bubbling, gurgling bellow from deep under the tar
+        v({ pitch: [[0, 70], [0.8, 58], [1.8, 40]], dur: 1.9, vol: 0.55, growl: 9, growlDepth: 0.4, formants: [[240, 2], [600, 3]], breath: 0.3, echo: true });
+        for (let i = 0; i < 12; i++) this.voice(t + i * 0.12 + Math.random() * 0.05, { type: 'sine', pitch: [[0, 180 + Math.random() * 200], [0.08, 500 + Math.random() * 300]], dur: 0.09, vol: 0.08, formants: [[700, 2]] });
+        break;
+      case 'heart':
+        // a vast heartbeat under a choir-like Hollow chord
+        [0, 0.28, 1.1, 1.38].forEach((d) => this.thump(t + d, 50, 0.8));
+        [146.8, 174.6, 220, 311.1].forEach((f) => this.voice(t + 0.1, { type: 'sawtooth', pitch: [[0, f], [2, f * 0.97]], dur: 2.2, vol: 0.05, formants: [[f * 3, 3]], echo: true }));
+        break;
       case 'dragon':
         v({ pitch: [[0, 170], [0.4, 150], [1.6, 85]], dur: 1.7, vol: 0.5, growl: 19, growlDepth: 0.18, formants: [[500, 2.5], [1250, 4]], breath: 0.3, echo: true });
         this.sfx('zap');
@@ -553,6 +637,27 @@ class AudioEngine {
     } else if (name === 'storm') {
       loopNoise('highpass', 2500, 0.4, 0.45, 300, 0.2); // rain
       loopNoise('bandpass', 450, 1.5, 0.7, 300, 0.13); // howling wind
+    } else if (name === 'bayou') {
+      loopNoise('lowpass', 400, 0.6, 0.25, 150, 0.06); // still, heavy air
+      // frogs: low croaks gated slowly; insects: a high shimmering whine
+      const frog = ctx.createOscillator(), fg = ctx.createGain(), gate = ctx.createOscillator(), gg = ctx.createGain();
+      frog.type = 'square'; frog.frequency.value = 130; fg.gain.value = 0;
+      gate.type = 'square'; gate.frequency.value = 1.6; gg.gain.value = 0.012;
+      const ff = ctx.createBiquadFilter(); ff.type = 'bandpass'; ff.frequency.value = 450; ff.Q.value = 4;
+      gate.connect(gg).connect(fg.gain); frog.connect(ff).connect(fg).connect(this.ambBus);
+      const bug = ctx.createOscillator(), bg = ctx.createGain(), wob = ctx.createOscillator(), wg = ctx.createGain();
+      bug.frequency.value = 6200; bg.gain.value = 0.006; wob.frequency.value = 9; wg.gain.value = 300;
+      wob.connect(wg).connect(bug.frequency); bug.connect(bg).connect(this.ambBus);
+      frog.start(t); gate.start(t); bug.start(t); wob.start(t);
+      this.ambNodes.push(frog, gate, bug, wob);
+    } else if (name === 'rift') {
+      loopNoise('bandpass', 300, 3, 0.35, 200, 0.05); // deep void wind
+      // an eerie, slowly beating drone
+      for (const f of [55, 55.7, 82.4]) {
+        const o = ctx.createOscillator(), g = ctx.createGain();
+        o.type = 'triangle'; o.frequency.value = f; g.gain.value = 0.03;
+        o.connect(g).connect(this.ambBus); o.start(t); this.ambNodes.push(o);
+      }
     } else if (name === 'mill') {
       loopNoise('lowpass', 260, 0.8, 0.55, 120, 0.09); // roaring fire
       loopNoise('bandpass', 2600, 2, 0.12, 1800, 1.7); // crackle
@@ -575,7 +680,7 @@ class AudioEngine {
     const ctx = this.ctx;
     if (!ctx || ctx.state !== 'running') return;
     const t = ctx.currentTime + 0.005, out = this.sfxBus;
-    if (['bigfoot', 'elder', 'raptor', 'dragon', 'moose', 'golem', 'wyrm', 'behemoth', 'growl', 'huskdie', 'howl', 'snarl', 'step'].includes(name)) {
+    if (['bigfoot', 'elder', 'raptor', 'alpha', 'dragon', 'elderdragon', 'moose', 'golem', 'wyrm', 'behemoth', 'leviathan', 'heart', 'growl', 'huskdie', 'howl', 'snarl', 'step'].includes(name)) {
       this.creature(name, t);
       return;
     }
@@ -600,6 +705,10 @@ class AudioEngine {
         sweepNoise(0.6, 0.15, 3000, 6000, 'bandpass');
         break;
       }
+      case 'splash':
+        sweepNoise(0.4, 0.4, 600, 200, 'lowpass');
+        tone('sine', 220, 520, 0.12, 0.12); tone('sine', 300, 700, 0.1, 0.08, t + 0.08);
+        break;
       case 'clang':
         [523, 1187, 1730].forEach((f, i) => tone('triangle', f, f * 0.98, 0.5 - i * 0.1, 0.12 - i * 0.03));
         this.noise(t, 0.05, 0.3, 'highpass', 3000, out);

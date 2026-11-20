@@ -26,6 +26,8 @@ export abstract class Enemy extends Phaser.GameObjects.Container {
   dead = false;
   carrier = false;
   isBoss = false;
+  /** can't be hit right now (e.g. a boss submerged in tar) */
+  untouchable = false;
   contactDmg = 0;
   score = 100;
   readonly flying: boolean;
