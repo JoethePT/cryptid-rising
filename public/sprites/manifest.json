@@ -161,6 +161,12 @@
   "srcH": 761,
   "w": 311
  },
+ "elderdragon-hover": {
+  "ax": 0.528,
+  "h": 440,
+  "srcH": 734,
+  "w": 608
+ },
  "golem-lunge": {
   "ax": 0.408,
   "h": 438,
