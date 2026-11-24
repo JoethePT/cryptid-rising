@@ -227,6 +227,12 @@
   "srcH": 1784,
   "w": 251
  },
+ "leviathan-lunge": {
+  "ax": 0.619,
+  "h": 225,
+  "srcH": 225,
+  "w": 791
+ },
  "leviathan-rise": {
   "ax": 0.551,
   "h": 440,

@@ -895,7 +895,7 @@ export class TarLeviathan extends Enemy {
     };
     if (this.spr) {
       if (this.rise < 0.5) pool(); // the painted art brings its own pool
-      const key = this.mode === 'lunge' || this.mode === 'lungeWind' || this.mode === 'erupt' ? 'leviathan-lunge' : 'leviathan-rise';
+      const key = this.mode === 'lunge' || this.mode === 'lungeWind' ? 'leviathan-lunge' : this.mode === 'spit' ? 'leviathan-spit' : 'leviathan-rise';
       this.pose(key, { scale: s, dy: sink, dx: this.mode === 'lunge' ? 40 : this.mode === 'lungeWind' ? -20 * p : 0, rot: this.mode === 'spit' ? -0.06 : 0 });
       this.spr.setAlpha(this.rise < 0.1 ? 0 : 1);
       // crop the part that's under the tar

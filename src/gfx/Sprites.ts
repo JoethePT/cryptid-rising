@@ -38,7 +38,7 @@ export const SPRITES: Record<string, SpriteDef> = {
   'wolf-run': { h: 104, ax: 0.5 }, 'wolf-lunge': { h: 110, ax: 0.5 },
   'moose-walk': { h: 330, ax: 0.5 }, 'moose-charge': { h: 290, ax: 0.5 },
   'wyrm-fly': { h: 230, ax: 0.5 }, 'wyrm-strike': { h: 250, ax: 0.5, fallback: 'wyrm-fly' },
-  'leviathan-rise': { h: 400, ax: 0.42 }, 'leviathan-lunge': { h: 400, ax: 0.42, fallback: 'leviathan-rise' },
+  'leviathan-rise': { h: 400, ax: 0.42 }, 'leviathan-lunge': { h: 230, ax: 0.3, fallback: 'leviathan-rise' }, 'leviathan-spit': { h: 420, ax: 0.42, fallback: 'leviathan-rise' },
   'heart-idle': { h: 360, ax: 0.5 }, 'heart-open': { h: 370, ax: 0.5, fallback: 'heart-idle' },
   'behemoth-walk': { h: 330, ax: 0.5 }, 'behemoth-swing': { h: 410, ax: 0.5, fallback: 'behemoth-walk' },
   'golem-walk': { h: 320, ax: 0.5 }, 'golem-roar': { h: 360, ax: 0.5, fallback: 'golem-walk' }, 'golem-lunge': { h: 270, ax: 0.5, fallback: 'golem-walk' },
