@@ -31,7 +31,7 @@ export const SPRITES: Record<string, SpriteDef> = {
   'dragon-claw': { h: 150, ax: 0.5, fallback: 'dragon-hover' }, 'dragon-breath': { h: 150, ax: 0.4, fallback: 'dragon-hover' },
   // Stage 6 beast: the Elder Dragon (one painted pose; the others fall back to it)
   'elderdragon-hover': { h: 170, ax: 0.55 }, 'elderdragon-glide': { h: 118, ax: 0.68, fallback: 'elderdragon-hover' },
-  'elderdragon-claw': { h: 170, ax: 0.5, fallback: 'elderdragon-hover' }, 'elderdragon-breath': { h: 170, ax: 0.45, fallback: 'elderdragon-hover' },
+  'elderdragon-claw': { h: 170, ax: 0.5, fallback: 'elderdragon-hover' }, 'elderdragon-breath': { h: 175, ax: 0.38, fallback: 'elderdragon-hover' },
   // Enemies
   'husk-walk': { h: 150, ax: 0.5 }, 'husk-windup': { h: 162, ax: 0.5 }, 'husk-swipe': { h: 146, ax: 0.45 },
   'crow-fly': { h: 92, ax: 0.5 }, 'crow-swoop': { h: 84, ax: 0.5 },

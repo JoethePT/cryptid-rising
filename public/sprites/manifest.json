@@ -161,6 +161,12 @@
   "srcH": 761,
   "w": 311
  },
+ "elderdragon-breath": {
+  "ax": 0.405,
+  "h": 440,
+  "srcH": 594,
+  "w": 747
+ },
  "elderdragon-glide": {
   "ax": 0.612,
   "h": 289,
