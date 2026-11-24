@@ -161,8 +161,14 @@
   "srcH": 761,
   "w": 311
  },
+ "elderdragon-glide": {
+  "ax": 0.612,
+  "h": 289,
+  "srcH": 289,
+  "w": 995
+ },
  "elderdragon-hover": {
-  "ax": 0.528,
+  "ax": 0.529,
   "h": 440,
   "srcH": 734,
   "w": 608
